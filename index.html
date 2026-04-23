@@ -150,7 +150,22 @@
                     </div>
                     <div class="sidebar-block">
                         <h4 class="sidebar-title"><i data-lucide="dumbbell" size="14"></i> BIBLIOTECA</h4>
-                        <p class="sidebar-hint">Arraste para o treino · Clique no lápis para editar o vídeo</p>
+                        
+                        <!-- Novo Filtro de Biblioteca -->
+                        <div class="library-controls" style="margin-bottom:15px;">
+                            <input type="text" id="lib-search" class="field-input sm" placeholder="Buscar exercício..." style="margin-bottom:8px;">
+                            <select id="lib-filter" class="field-input sm">
+                                <option value="ALL">TODAS CATEGORIAS</option>
+                                <option value="PEITO">PEITO</option>
+                                <option value="COSTAS">COSTAS</option>
+                                <option value="PERNAS">PERNAS</option>
+                                <option value="OMBROS">OMBROS</option>
+                                <option value="BRAÇOS">BRAÇOS</option>
+                                <option value="CORE">CORE</option>
+                                <option value="ALONGAMENTO">ALONGAMENTO</option>
+                            </select>
+                        </div>
+
                         <div id="exercise-library" class="item-list library-pool"></div>
                         <button id="add-lib-exercise-btn" class="outline-btn"><i data-lucide="plus" size="14"></i> Novo Exercício</button>
                     </div>
