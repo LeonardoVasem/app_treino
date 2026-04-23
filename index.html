@@ -156,6 +156,7 @@
             <div id="exercise-feed" class="exercise-feed"></div>
         </div>
 
+        <!-- Overlay de Exercício (DESIGN PREMIUM MOBILE) -->
         <div id="exercise-overlay" class="overlay hidden">
             <div class="overlay-glass"></div>
             <div class="overlay-modal fullscreen-mobile">
@@ -163,22 +164,30 @@
                     <button class="close-btn"><i data-lucide="chevron-down"></i></button>
                     <h2 id="modal-name">Nome</h2>
                 </header>
+                
                 <div class="video-container" id="modal-video-container"></div>
+                
                 <div class="modal-body-scroll">
-                    <div class="load-tracker">
-                        <div class="prev-info">RECORDE: <span id="modal-prev-load">---</span></div>
-                        <div class="input-grid">
-                            <div class="field">
-                                <label>CARGA (KG)</label>
-                                <input type="number" id="w-input" step="any" inputmode="decimal" placeholder="0">
-                            </div>
-                            <div class="field">
-                                <label>REPS</label>
-                                <input type="number" id="r-input" inputmode="numeric" placeholder="0">
-                            </div>
+                    <div class="progression-grid">
+                        <div class="prog-card">
+                            <span>SÉRIE ANTERIOR</span>
+                            <b id="modal-prev-load">0kg</b>
                         </div>
-                        <button id="add-set-btn" class="glow-btn">REGISTRAR SÉRIE</button>
+                        <div class="prog-card highlight">
+                            <span>CARGA HOJE</span>
+                            <input type="number" id="w-input" step="any" inputmode="decimal" placeholder="0">
+                            <label>KG</label>
+                        </div>
                     </div>
+
+                    <div class="reps-box">
+                        <label>QUANTAS REPETIÇÕES?</label>
+                        <input type="number" id="r-input" inputmode="numeric" placeholder="0">
+                    </div>
+
+                    <button id="add-set-btn" class="glow-btn">REGISTRAR SÉRIE</button>
+                    
+                    <h3 class="section-title" style="margin-top:30px">SÉRIES DE HOJE</h3>
                     <div class="set-history" id="modal-set-history"></div>
                 </div>
             </div>
