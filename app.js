@@ -1,4 +1,4 @@
-// --- TITAN LOAD CLOUD ARCHITECTURE PRO (RELOADED V2) ---
+// --- TITAN LOAD CLOUD ARCHITECTURE PRO (ULTRA FINAL) ---
 
 const firebaseConfig = {
     apiKey: "AIzaSyCdLVzg_Uns3aRNT8jJLc_C8E2yZfV8RF0",
@@ -90,7 +90,6 @@ class TitanApp {
         document.getElementById('finish-workout').onclick = () => this.finishWorkout();
         document.getElementById('close-summary').onclick = () => this.switchScreen('home-screen');
         
-        // Listener para o Nome do Treino
         document.getElementById('day-workout-name').oninput = (e) => {
             if(this.selectedStudent) {
                 this.selectedStudent.schedule[this.selectedDay].name = e.target.value.toUpperCase();
@@ -164,14 +163,15 @@ class TitanApp {
         const feed = document.getElementById('exercise-feed');
         feed.innerHTML = this.activeWorkout.exercises.map(ex => {
             const done = this.sessionSets.filter(s => s.id === ex.guid).length;
+            const total = parseInt(ex.series) || 3;
             return `
                 <div class="workout-card" onclick="app.openExerciseModal('${ex.guid}')">
                     <div class="workout-card-body" style="padding:15px; background:var(--surface-light); display:flex; justify-content:space-between; align-items:center;">
                         <div>
                             <h3 style="font-size:1.1rem; color:white;">${ex.name}</h3>
-                            <p style="margin:0; opacity:0.6">${ex.series} | ${done}/${ex.totalSets || 3} Séries</p>
+                            <p style="margin:0; opacity:0.6">${ex.series} | ${done}/${total} Séries</p>
                         </div>
-                        <i data-lucide="${done >= (ex.totalSets || 3) ? 'check-circle' : 'circle'}" color="${done >= (ex.totalSets || 3) ? '#bfff00' : '#444'}"></i>
+                        <i data-lucide="${done >= total ? 'check-circle' : 'circle'}" color="${done >= total ? '#bfff00' : '#444'}"></i>
                     </div>
                 </div>
             `;
@@ -185,8 +185,11 @@ class TitanApp {
         document.getElementById('modal-name').textContent = this.selectedEx.name;
         document.getElementById('modal-prev-load').textContent = (this.selectedEx.weight || 0) + 'kg';
         document.getElementById('w-input').value = this.selectedEx.weight || "";
+        document.getElementById('r-input').value = "";
+        
         const vidID = this.extractYoutubeId(libEx.videoId);
         document.getElementById('modal-video-container').innerHTML = `<iframe src="https://www.youtube.com/embed/${vidID}?autoplay=1&mute=1&playsinline=1" frameborder="0" allowfullscreen></iframe>`;
+        this.renderSets();
         document.getElementById('exercise-overlay').classList.remove('hidden');
     }
 
@@ -194,12 +197,38 @@ class TitanApp {
         const w = parseFloat(document.getElementById('w-input').value);
         const r = parseInt(document.getElementById('r-input').value);
         if(!w || !r) return;
+        
         this.sessionSets.push({ id: this.selectedEx.guid, w, r });
         if(w > (this.selectedEx.weight || 0)) {
             this.selectedEx.weight = w;
             this.currentUser.stats.records++;
         }
+        
+        this.renderSets();
         this.renderExerciseFeed();
+        
+        // Verifica se completou as séries
+        const done = this.sessionSets.filter(s => s.id === this.selectedEx.guid).length;
+        const total = parseInt(this.selectedEx.series) || 3;
+        
+        if (done >= total) {
+            this.toast("EXERCÍCIO CONCLUÍDO! 🔥");
+            setTimeout(() => {
+                document.getElementById('exercise-overlay').classList.add('hidden');
+                document.getElementById('modal-video-container').innerHTML = '';
+            }, 1000);
+        }
+    }
+
+    renderSets() {
+        const histEl = document.getElementById('modal-set-history');
+        const sets = this.sessionSets.filter(s => s.id === this.selectedEx.guid);
+        histEl.innerHTML = sets.map((s, i) => `
+            <div class="set-row">
+                <span>SÉRIE ${i+1}</span>
+                <b>${s.w}KG x ${s.r}</b>
+            </div>
+        `).join('');
     }
 
     async finishWorkout() {
@@ -208,6 +237,7 @@ class TitanApp {
         this.currentUser.stats.totalWorkouts++;
         await db.collection("sessions").add({ studentId: this.currentUser.id, date: new Date().toLocaleDateString('pt-BR'), volume: vol, timestamp: firebase.firestore.FieldValue.serverTimestamp() });
         await this.save();
+        document.getElementById('sum-volume').textContent = (vol/1000).toFixed(1) + 't';
         this.switchScreen('summary-screen');
     }
 
@@ -231,17 +261,18 @@ class TitanApp {
                 const s = doc.data();
                 return `<div class="history-item"><span class="date">${s.date}</span><span class="vol">${(s.volume/1000).toFixed(1)} TON</span></div>`;
             }).join('');
-        } catch(e) { console.error("Histórico indisponível (Crie o índice no console do Firebase)"); }
+            document.getElementById('s-vol').textContent = (this.selectedStudent.stats.volume/1000).toFixed(1) + 't';
+            document.getElementById('s-count').textContent = this.selectedStudent.stats.totalWorkouts;
+        } catch(e) { console.error("Index erro"); }
     }
 
     renderWorkoutBuilder() {
         const dropzone = document.getElementById('active-workout-builder');
         const dayData = this.selectedStudent.schedule[this.selectedDay];
         document.getElementById('day-workout-name').value = dayData.name || "";
-        
         dropzone.innerHTML = dayData.exercises.map((ex, idx) => `
             <div class="list-item" onclick="app.inspectExercise('${ex.guid}')">
-                <span>${idx + 1}. ${ex.name}</span>
+                <span>${idx + 1}. ${ex.name.toUpperCase()}</span>
                 <i data-lucide="trash-2" size="14" style="margin-left:auto" onclick="event.stopPropagation(); app.removeExercise('${ex.guid}')"></i>
             </div>
         `).join('');
@@ -269,8 +300,8 @@ class TitanApp {
         if (!libEl) return;
         libEl.innerHTML = this.library.map(ex => `
             <div class="list-item" data-id="${ex.id}">
-                <span>${ex.name}</span>
-                <i data-lucide="edit-3" size="14" style="margin-left:auto" onclick="app.openLibEditor('${ex.id}')"></i>
+                <span>${ex.name.toUpperCase()}</span>
+                <i data-lucide="edit-3" size="14" style="margin-left:auto; cursor:pointer;" onclick="app.openLibEditor('${ex.id}')"></i>
             </div>
         `).join('');
         lucide.createIcons();
@@ -300,7 +331,7 @@ class TitanApp {
     renderTrainer() {
         const slist = document.getElementById('student-list');
         slist.innerHTML = this.students.map(s => `
-            <div class="list-item ${this.selectedStudent?.id === s.id ? 'active' : ''}" onclick="app.selectStudent('${s.id}')"><span>${s.name}</span></div>
+            <div class="list-item ${this.selectedStudent?.id === s.id ? 'active' : ''}" onclick="app.selectStudent('${s.id}')"><span>${s.name.toUpperCase()}</span></div>
         `).join('');
     }
 
@@ -359,12 +390,12 @@ class TitanApp {
         if(url.includes('v=')) id = url.split('v=')[1].split('&')[0];
         else if(url.includes('youtu.be/')) id = url.split('youtu.be/')[1].split('?')[0];
         else if(url.includes('/shorts/')) id = url.split('/shorts/')[1].split('?')[0];
-        return id.split('/')[0].trim(); // Limpa barras extras ou espaços
+        return id.split('/')[0].trim();
     }
 
     toast(msg) {
         const t = document.createElement('div');
-        t.style.cssText = `position:fixed; bottom:50px; left:50%; transform:translateX(-50%); background:var(--primary); color:#000; padding:12px 24px; border-radius:30px; font-weight:800; z-index:4000;`;
+        t.style.cssText = `position:fixed; bottom:50px; left:50%; transform:translateX(-50%); background:var(--primary); color:#000; padding:12px 24px; border-radius:30px; font-weight:800; z-index:4000; border:2px solid black;`;
         t.textContent = msg;
         document.body.appendChild(t);
         setTimeout(() => t.remove(), 2500);
