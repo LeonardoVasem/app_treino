@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>TITAN LOAD | Elite Training</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body class="athlete-mode">
+    <div id="app">
+        <!-- Top Branding -->
+        <header class="app-branding">
+            <div class="logo">TITAN<span>LOAD</span></div>
+            <button id="toggle-mode-btn" title="Alternar para Trainer">
+                <i data-lucide="shield-check"></i>
+            </button>
+        </header>
+
+        <!-- Athlete View -->
+        <div id="athlete-view" class="view">
+            <nav class="workout-tabs" id="tab-container">
+                <!-- Dynamic Tabs -->
+            </nav>
+
+            <main class="content">
+                <div id="active-workout-header">
+                    <h1 id="workout-title">CARREGANDO...</h1>
+                    <div class="progress-bar-container">
+                        <div class="progress-fill" style="width: 0%"></div>
+                    </div>
+                </div>
+
+                <div id="exercise-list" class="exercises-container">
+                    <!-- Exercise cards go here -->
+                </div>
+            </main>
+        </div>
+
+        <!-- Trainer View (Desktop Focused) -->
+        <div id="trainer-view" class="view hidden">
+            <div class="trainer-grid">
+                <aside class="exercise-bank">
+                    <h2>Biblioteca</h2>
+                    <div id="bank-list"></div>
+                </aside>
+                <section class="workout-builder">
+                    <div class="builder-header">
+                        <h2>Montagem de Treino</h2>
+                        <button class="add-workout-btn">+ Novo Treino</button>
+                    </div>
+                    <div id="builder-canvas">
+                        <!-- Draggable exercises here -->
+                    </div>
+                </section>
+            </div>
+        </div>
+
+        <!-- Exercise Focus Overlay -->
+        <div id="exercise-overlay" class="overlay hidden">
+            <div class="overlay-glass"></div>
+            <div class="overlay-modal">
+                <div class="modal-handle"></div>
+                <button class="close-btn"><i data-lucide="x"></i></button>
+                
+                <div class="video-container">
+                    <div id="youtube-player"></div>
+                </div>
+
+                <div class="modal-body">
+                    <h2 id="modal-exercise-name">Supino Inclinado</h2>
+                    <p id="modal-exercise-desc">Foco em peitoral superior e deltoides.</p>
+                    
+                    <div class="load-tracker">
+                        <div class="previous-record">
+                            <span class="label">RECORD ANTERIOR</span>
+                            <span class="value" id="prev-load-val">44kg x 12</span>
+                        </div>
+                        
+                        <div class="input-row">
+                            <div class="input-box">
+                                <label>CARGA (KG)</label>
+                                <input type="number" id="weight-input" placeholder="0">
+                            </div>
+                            <div class="input-box">
+                                <label>REPS</label>
+                                <input type="number" id="reps-input" placeholder="0">
+                            </div>
+                        </div>
+
+                        <button id="confirm-set-btn" class="glow-btn">REGISTRAR SÉRIE</button>
+                    </div>
+
+                    <div id="timer-display" class="timer hidden">
+                        <span class="time">01:30</span>
+                        <span class="desc">DESCANSO ATIVO</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="app.js"></script>
+</body>
+</html>
