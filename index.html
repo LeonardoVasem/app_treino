@@ -14,6 +14,9 @@
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
     
+    <!-- Drag and Drop Library -->
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+    
     <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 <body class="athlete-mode">
@@ -56,41 +59,61 @@
                 <aside class="trainer-sidebar">
                     <div class="sidebar-section">
                         <h3><i data-lucide="users"></i> MEUS ALUNOS</h3>
-                        <div id="student-list" class="list-container">
-                            <!-- Alunos injetados aqui -->
-                        </div>
+                        <div id="student-list" class="list-container"></div>
                         <button class="add-btn">+ Adicionar Aluno</button>
+                    </div>
+                    <div class="sidebar-section" style="margin-top: 30px;">
+                        <h3><i data-lucide="dumbbell"></i> BIBLIOTECA</h3>
+                        <div id="exercise-library" class="list-container library-pool">
+                            <!-- Exercicios globais para arrastar -->
+                        </div>
                     </div>
                 </aside>
 
                 <main class="trainer-main">
                     <div id="student-dashboard" class="hidden">
                         <div class="student-header">
-                            <h2 id="selected-student-name">Nome do Aluno</h2>
+                            <div>
+                                <h2 id="selected-student-name">Selecione Aluno</h2>
+                                <p id="selected-student-id" style="font-size:0.7rem; color:var(--text-dim)"></p>
+                            </div>
                             <div class="student-stats">
                                 <span>Volume: <b id="s-vol">---</b></span>
                                 <span>Treinos: <b id="s-count">---</b></span>
                             </div>
                         </div>
 
-                        <div class="editor-grid">
-                            <div class="exercise-manager">
-                                <h3>Gestão de Treinos</h3>
-                                <div id="student-workout-editor"></div>
+                        <div class="builder-container">
+                            <div class="builder-column">
+                                <div class="col-header">
+                                    <h3>TREINO ATIVO</h3>
+                                    <span class="hint">Arraste para reordenar ou remover</span>
+                                </div>
+                                <div id="active-workout-builder" class="builder-dropzone"></div>
                             </div>
-                            <div class="video-tester-section">
-                                <h3>Preview de Execução</h3>
-                                <div id="video-tester" class="video-box"></div>
-                                <div class="quick-edit">
-                                    <input type="text" id="edit-video-id" placeholder="YouTube Link ou ID">
-                                    <button id="save-video-btn" class="glow-btn">ATUALIZAR VÍDEO</button>
+                            
+                            <div class="builder-inspector">
+                                <div id="inspector-content">
+                                    <div class="video-box" id="inspector-video"></div>
+                                    <div class="editor-pane">
+                                        <h3 id="ins-name">Editor</h3>
+                                        <div id="ins-form">
+                                            <label>YouTube Link</label>
+                                            <input type="text" id="ins-video-id">
+                                            <div class="grid-2">
+                                                <div><label>Séries</label><input type="text" id="ins-series"></div>
+                                                <div><label>Meta Reps</label><input type="text" id="ins-reps"></div>
+                                            </div>
+                                            <button id="save-ins-btn" class="glow-btn">SALVAR NO ALUNO</button>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
                     <div id="no-student-selected" class="empty-state">
-                        <i data-lucide="mouse-pointer-2"></i>
-                        <p>Selecione um aluno para gerenciar</p>
+                        <i data-lucide="layout-template"></i>
+                        <p>Selecione um aluno para começar a montar o treino</p>
                     </div>
                 </main>
             </div>
