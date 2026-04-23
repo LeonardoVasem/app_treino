@@ -1,6 +1,6 @@
 /* ================================================================
-   TITAN LOAD v2.1 — Admin & Library Pro
-   Athlete + Trainer + Library + History + Auth
+   TITAN LOAD v2.2 — Performance & Spacing
+   Athlete + Trainer + Library + History + Auth + REST TIMER
    ================================================================ */
 
 const FIREBASE_CONFIG = {
@@ -13,8 +13,7 @@ const FIREBASE_CONFIG = {
     measurementId: "G-SWY71RQCFR"
 };
 
-// CONFIGURAÇÃO DE ACESSO
-const TRAINER_EMAIL = "leonardovasen@gmail.com"; // LOGIN MASTER
+const TRAINER_EMAIL = "leonardovasen@gmail.com"; 
 
 if (firebase.apps.length === 0) firebase.initializeApp(FIREBASE_CONFIG);
 const db = firebase.firestore();
@@ -22,7 +21,7 @@ const auth = firebase.auth();
 
 class TitanApp {
     constructor() {
-        console.log("TITAN LOAD v2.1 — Admin Ready");
+        console.log("TITAN LOAD v2.2 — Performance Ready");
         this.currentUser = null;
         this.students = [];
         this.library = [];
@@ -33,6 +32,10 @@ class TitanApp {
         this.sessionRecords = 0;
         this.activeExEdit = null;
         this.activeLibEdit = null;
+
+        // Timer State
+        this.timerInterval = null;
+        this.timerSeconds = 60;
 
         window.app = this;
         this.boot();
@@ -49,38 +52,27 @@ class TitanApp {
     async onLogin(user) {
         const loggedEmail = user.email.toLowerCase();
         const isTrainer = loggedEmail === TRAINER_EMAIL.toLowerCase();
-        
         console.log("TITAN AUTH — Logged as:", loggedEmail, " | isTrainer:", isTrainer);
+        
         const ref = db.collection("students").doc(user.uid);
         const snap = await ref.get();
         if (!snap.exists) {
             this.currentUser = {
-                id: user.uid,
-                name: user.displayName || "Atleta",
-                email: user.email,
-                schedule: this.blankSchedule(),
-                stats: { totalWorkouts: 0, volume: 0, records: 0 }
+                id: user.uid, name: user.displayName || "Atleta", email: user.email,
+                schedule: this.blankSchedule(), stats: { totalWorkouts: 0, volume: 0, records: 0 }
             };
             await ref.set(this.currentUser);
         } else {
             this.currentUser = { id: snap.id, ...snap.data() };
         }
 
-        // Se for o trainer, ele carrega todos os alunos e a biblioteca
         if (isTrainer) {
-            db.collection("library").onSnapshot(s => {
-                this.library = s.docs.map(d => ({ id: d.id, ...d.data() }));
-                this.renderLibrary();
-            });
-            db.collection("students").onSnapshot(s => {
-                this.students = s.docs.map(d => ({ id: d.id, ...d.data() }));
-                this.refreshActiveScreen();
-            });
+            db.collection("library").onSnapshot(s => { this.library = s.docs.map(d => ({ id: d.id, ...d.data() })); this.renderLibrary(); });
+            db.collection("students").onSnapshot(s => { this.students = s.docs.map(d => ({ id: d.id, ...d.data() })); this.refreshActiveScreen(); });
             document.getElementById("goto-trainer-btn").classList.remove("hidden");
         } else {
             document.getElementById("goto-trainer-btn").classList.add("hidden");
         }
-
         this.showScreen("home-screen");
     }
 
@@ -113,17 +105,12 @@ class TitanApp {
         document.getElementById("add-set-btn").onclick = () => this.registerSet();
         document.getElementById("save-ins-btn").onclick = () => this.saveInspector();
         document.getElementById("day-workout-name").oninput = (e) => this.onDayNameChange(e);
-        
-        // Filtros da Biblioteca
         document.getElementById("lib-search").oninput = () => this.renderLibrary();
         document.getElementById("lib-filter").onchange = () => this.renderLibrary();
+        document.getElementById("skip-timer-btn").onclick = () => this.stopRestTimer();
 
         document.querySelectorAll(".day-btn").forEach(btn => {
-            btn.onclick = () => {
-                this.selectedDay = btn.dataset.day;
-                this.paintWeek();
-                this.renderBuilder();
-            };
+            btn.onclick = () => { this.selectedDay = btn.dataset.day; this.paintWeek(); this.renderBuilder(); };
         });
 
         document.getElementById("save-lib-btn").onclick = () => this.saveLibVideo();
@@ -140,51 +127,33 @@ class TitanApp {
     // --- ATHLETE ---
     renderHome() {
         if (!this.currentUser) return;
-        const u = this.currentUser;
-        const stats = u.stats || { totalWorkouts: 0, volume: 0, records: 0 };
+        const u = this.currentUser; const stats = u.stats || { totalWorkouts: 0, volume: 0, records: 0 };
         document.getElementById("user-name").textContent = u.name;
         document.getElementById("total-workouts").textContent = stats.totalWorkouts;
         document.getElementById("total-volume").textContent = (stats.volume / 1000).toFixed(1) + "t";
         document.getElementById("total-records").textContent = stats.records;
-
         const container = document.getElementById("workout-cards-container");
         const DAYS = ["SEG","TER","QUA","QUI","SEX","SAB","DOM"];
         container.innerHTML = DAYS.map(day => {
-            const d = u.schedule?.[day];
-            if (!d || d.exercises.length === 0) return "";
-            return `
-                <div class="wk-card" onclick="app.beginWorkout('${day}')">
-                    <span class="wk-card-day">${day}</span>
-                    <h3>${d.name || "TREINO"}</h3>
-                    <p>${d.exercises.length} exercício${d.exercises.length > 1 ? "s" : ""}</p>
-                </div>`;
+            const d = u.schedule?.[day]; if (!d || d.exercises.length === 0) return "";
+            return `<div class="wk-card" onclick="app.beginWorkout('${day}')"><span class="wk-card-day">${day}</span><h3>${d.name || "TREINO"}</h3><p>${d.exercises.length} exercícios</p></div>`;
         }).join("");
     }
 
-    // --- WORKOUT ---
     beginWorkout(day) {
-        this.activeWorkoutDay = day;
-        this.activeWorkout = JSON.parse(JSON.stringify(this.currentUser.schedule[day]));
-        this.sessionSets = [];
-        this.sessionRecords = 0;
+        this.activeWorkoutDay = day; this.activeWorkout = JSON.parse(JSON.stringify(this.currentUser.schedule[day]));
+        this.sessionSets = []; this.sessionRecords = 0;
         this.showScreen("workout-screen");
         document.getElementById("active-workout-name").textContent = this.activeWorkout.name || "TREINO";
-        this.renderFeed();
-        this.updateProgress();
+        this.renderFeed(); this.updateProgress();
     }
 
     renderFeed() {
         const feed = document.getElementById("exercise-feed");
         feed.innerHTML = this.activeWorkout.exercises.map(ex => {
             const done = this.sessionSets.filter(s => s.guid === ex.guid).length;
-            const total = parseInt(ex.series) || 3;
-            const isDone = done >= total;
-            return `
-                <div class="ex-card ${isDone ? "done" : ""}" onclick="app.openExercise('${ex.guid}')">
-                    <div class="status-ring"><i data-lucide="${isDone ? "check" : "play"}" size="18" color="${isDone ? "#bfff00" : "#555"}"></i></div>
-                    <div class="ex-info"><h3>${ex.name}</h3><p>${done}/${total} séries</p></div>
-                    ${isDone ? "" : '<i data-lucide="chevron-right" size="18" class="ex-chevron"></i>'}
-                </div>`;
+            const total = parseInt(ex.series) || 3; const isDone = done >= total;
+            return `<div class="ex-card ${isDone ? "done" : ""}" onclick="app.openExercise('${ex.guid}')"><div class="status-ring"><i data-lucide="${isDone ? "check" : "play"}" size="18" color="${isDone ? "#bfff00" : "#555"}"></i></div><div class="ex-info"><h3>${ex.name}</h3><p>${done}/${total} séries</p></div>${isDone ? "" : '<i data-lucide="chevron-right" size="18" class="ex-chevron"></i>'}</div>`;
         }).join("");
         lucide.createIcons();
     }
@@ -218,7 +187,7 @@ class TitanApp {
     registerSet() {
         const w = parseFloat(document.getElementById("w-input").value);
         const r = parseInt(document.getElementById("r-input").value);
-        if (!w || !r) return;
+        if (!w || !r) { this.toast("Preencha carga e reps!"); return; }
         if (navigator.vibrate) navigator.vibrate(50);
         this.sessionSets.push({ guid: this.selectedEx.guid, w, r });
         if (w > (this.selectedEx.weight || 0)) { this.selectedEx.weight = w; this.sessionRecords++; }
@@ -232,7 +201,39 @@ class TitanApp {
         const done = this.sessionSets.filter(s => s.guid === this.selectedEx.guid).length;
         const total = parseInt(this.selectedEx.series) || 3;
         document.getElementById("modal-set-counter").textContent = `${done}/${total}`;
-        if (done >= total) { this.toast("EXCELENTE! 🔥"); setTimeout(() => this.closeExerciseModal(), 1200); }
+
+        if (done < total) {
+            this.startRestTimer();
+        } else {
+            this.toast("EXCELENTE! 🔥"); setTimeout(() => this.closeExerciseModal(), 1200);
+        }
+    }
+
+    startRestTimer() {
+        this.stopRestTimer();
+        this.timerSeconds = 60;
+        document.getElementById("rest-timer-overlay").classList.remove("hidden");
+        this.updateTimerUI();
+        this.timerInterval = setInterval(() => {
+            this.timerSeconds--;
+            if (this.timerSeconds <= 0) {
+                if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+                this.stopRestTimer();
+            }
+            this.updateTimerUI();
+        }, 1000);
+    }
+
+    stopRestTimer() {
+        clearInterval(this.timerInterval);
+        this.timerInterval = null;
+        document.getElementById("rest-timer-overlay").classList.add("hidden");
+    }
+
+    updateTimerUI() {
+        const m = Math.floor(this.timerSeconds / 60);
+        const s = this.timerSeconds % 60;
+        document.getElementById("timer-display").textContent = `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
     }
 
     renderSetLog() {
@@ -241,13 +242,15 @@ class TitanApp {
         wrap.innerHTML = sets.length > 0 ? `<p class="set-log-title">SÉRIES REGISTRADAS</p>` + sets.map((s, i) => `<div class="set-entry"><span class="set-num">SÉRIE ${i + 1}</span><span class="set-data">${s.w}kg × ${s.r}</span></div>`).join("") : "";
     }
 
-    closeExerciseModal() { document.getElementById("exercise-overlay").classList.add("hidden"); document.getElementById("modal-video-wrap").innerHTML = ""; }
+    closeExerciseModal() { 
+        this.stopRestTimer();
+        document.getElementById("exercise-overlay").classList.add("hidden"); 
+        document.getElementById("modal-video-wrap").innerHTML = ""; 
+    }
 
     async endWorkout() {
         const vol = this.sessionSets.reduce((a, s) => a + (s.w * s.r), 0);
-        this.currentUser.stats.volume += vol;
-        this.currentUser.stats.totalWorkouts++;
-        this.currentUser.stats.records += this.sessionRecords;
+        this.currentUser.stats.volume += vol; this.currentUser.stats.totalWorkouts++; this.currentUser.stats.records += this.sessionRecords;
         this.activeWorkout.exercises.forEach(ex => {
             const original = this.currentUser.schedule[this.activeWorkoutDay].exercises.find(e => e.guid === ex.guid);
             if (original && ex.weight) original.weight = ex.weight;
@@ -263,23 +266,14 @@ class TitanApp {
     // --- TRAINER ---
     renderTrainerList() {
         const list = document.getElementById("student-list");
-        list.innerHTML = this.students.map(s => `
-            <div class="list-item ${this.selectedStudent?.id === s.id ? "active" : ""}" onclick="app.selectStudent('${s.id}')">
-                <span>${s.name}</span>
-                <i data-lucide="trash-2" size="14" class="edit-icon" onclick="event.stopPropagation(); app.deleteStudent('${s.id}')"></i>
-            </div>
-        `).join("");
+        list.innerHTML = this.students.map(s => `<div class="list-item ${this.selectedStudent?.id === s.id ? "active" : ""}" onclick="app.selectStudent('${s.id}')"><span>${s.name}</span><i data-lucide="trash-2" size="14" class="edit-icon" onclick="event.stopPropagation(); app.deleteStudent('${s.id}')"></i></div>`).join("");
         lucide.createIcons();
     }
 
     async deleteStudent(id) {
-        if (!confirm("Tem certeza que deseja remover este aluno? Todos os treinos serão apagados.")) return;
+        if (!confirm("Remover este aluno?")) return;
         await db.collection("students").doc(id).delete();
-        if (this.selectedStudent?.id === id) {
-            this.selectedStudent = null;
-            document.getElementById("student-dashboard").classList.add("hidden");
-            document.getElementById("no-student-selected").classList.remove("hidden");
-        }
+        if (this.selectedStudent?.id === id) { this.selectedStudent = null; document.getElementById("student-dashboard").classList.add("hidden"); document.getElementById("no-student-selected").classList.remove("hidden"); }
         this.toast("Aluno removido.");
     }
 
@@ -298,8 +292,7 @@ class TitanApp {
         document.querySelectorAll(".day-btn").forEach(btn => {
             const day = btn.dataset.day; btn.classList.toggle("active", day === this.selectedDay);
             const sched = this.selectedStudent.schedule?.[day];
-            const tag = btn.querySelector(".day-tag");
-            if (tag) tag.textContent = sched?.exercises?.length > 0 ? (sched.name || "TREINO") : "DESC";
+            const tag = btn.querySelector(".day-tag"); if (tag) tag.textContent = sched?.exercises?.length > 0 ? (sched.name || "TREINO") : "DESC";
         });
     }
 
@@ -307,11 +300,7 @@ class TitanApp {
         const dayData = this.selectedStudent.schedule[this.selectedDay] || { name: "", exercises: [] };
         document.getElementById("day-workout-name").value = dayData.name || "";
         const zone = document.getElementById("active-workout-builder");
-        zone.innerHTML = dayData.exercises.length === 0 ? `<p class="drop-hint">Arraste exercícios da biblioteca para cá</p>` : dayData.exercises.map((ex, i) => `
-            <div class="list-item" onclick="app.inspectExercise('${ex.guid}')">
-                <span>${i + 1}. ${ex.name}</span>
-                <i data-lucide="trash-2" size="14" class="edit-icon" onclick="event.stopPropagation(); app.removeExercise('${ex.guid}')"></i>
-            </div>`).join("");
+        zone.innerHTML = dayData.exercises.length === 0 ? `<p class="drop-hint">Arraste exercícios</p>` : dayData.exercises.map((ex, i) => `<div class="list-item" onclick="app.inspectExercise('${ex.guid}')"><span>${i + 1}. ${ex.name}</span><i data-lucide="trash-2" size="14" class="edit-icon" onclick="event.stopPropagation(); app.removeExercise('${ex.guid}')"></i></div>`).join("");
         document.getElementById("inspector-content").classList.add("hidden");
         document.querySelector(".inspector-empty").classList.remove("hidden");
         lucide.createIcons(); this.initDragDrop();
@@ -329,33 +318,21 @@ class TitanApp {
         document.getElementById("inspector-video").innerHTML = vid ? `<iframe src="https://www.youtube.com/embed/${vid}?mute=1" allowfullscreen></iframe>` : "";
     }
 
-    async saveInspector() {
-        this.activeExEdit.series = document.getElementById("ins-series").value;
-        this.activeExEdit.metaReps = document.getElementById("ins-reps").value;
-        await this.persistStudent(); this.toast("Atualizado!");
-    }
-
+    async saveInspector() { this.activeExEdit.series = document.getElementById("ins-series").value; this.activeExEdit.metaReps = document.getElementById("ins-reps").value; await this.persistStudent(); this.toast("Atualizado!"); }
     onDayNameChange(e) { this.selectedStudent.schedule[this.selectedDay].name = e.target.value.toUpperCase(); this.persistStudent(); this.paintWeek(); }
     removeExercise(guid) { this.selectedStudent.schedule[this.selectedDay].exercises = this.selectedStudent.schedule[this.selectedDay].exercises.filter(e => e.guid !== guid); this.persistStudent(); this.renderBuilder(); }
 
     initDragDrop() {
-        const lib = document.getElementById("exercise-library");
-        const drop = document.getElementById("active-workout-builder");
-        if (Sortable.get(lib)) Sortable.get(lib).destroy();
-        if (Sortable.get(drop)) Sortable.get(drop).destroy();
+        const lib = document.getElementById("exercise-library"); const drop = document.getElementById("active-workout-builder");
+        if (Sortable.get(lib)) Sortable.get(lib).destroy(); if (Sortable.get(drop)) Sortable.get(drop).destroy();
         new Sortable(lib, { group: { name: "titan", pull: "clone", put: false }, sort: false, animation: 150 });
         new Sortable(drop, { group: "titan", animation: 150, onAdd: (evt) => { 
             const libEx = this.library.find(e => e.id === evt.item.dataset.id);
-            if (libEx) this.addExerciseToDay(libEx, evt.newIndex);
-            evt.item.remove();
+            if (libEx) this.addExerciseToDay(libEx, evt.newIndex); evt.item.remove();
         }});
     }
 
-    addExerciseToDay(libEx, index) {
-        this.selectedStudent.schedule[this.selectedDay].exercises.splice(index, 0, { guid: "g" + Date.now(), name: libEx.name, series: libEx.defaultSeries || "3x", weight: 0 });
-        this.persistStudent(); this.renderBuilder();
-    }
-
+    addExerciseToDay(libEx, index) { this.selectedStudent.schedule[this.selectedDay].exercises.splice(index, 0, { guid: "g" + Date.now(), name: libEx.name, series: libEx.defaultSeries || "3x", weight: 0 }); this.persistStudent(); this.renderBuilder(); }
     async persistStudent() { await db.collection("students").doc(this.selectedStudent.id).set(this.selectedStudent); }
 
     async loadHistory() {
@@ -365,42 +342,19 @@ class TitanApp {
         } catch (e) {}
     }
 
-    // --- LIBRARY ---
     renderLibrary() {
         const search = document.getElementById("lib-search").value.toUpperCase();
         const category = document.getElementById("lib-filter").value;
         const el = document.getElementById("exercise-library");
-        
         let filtered = this.library.filter(ex => ex.name.includes(search));
         if (category !== "ALL") filtered = filtered.filter(ex => ex.category === category);
-
-        el.innerHTML = filtered.map(ex => `
-            <div class="list-item" data-id="${ex.id}">
-                <span>${ex.name}</span>
-                <i data-lucide="edit-3" size="14" class="edit-icon" onclick="event.stopPropagation(); app.openLibEditor('${ex.id}')"></i>
-            </div>
-        `).join("");
+        el.innerHTML = filtered.map(ex => `<div class="list-item" data-id="${ex.id}"><span>${ex.name}</span><i data-lucide="edit-3" size="14" class="edit-icon" onclick="event.stopPropagation(); app.openLibEditor('${ex.id}')"></i></div>`).join("");
         lucide.createIcons(); this.initDragDrop();
     }
 
-    openLibEditor(id) {
-        this.activeLibEdit = this.library.find(e => e.id === id);
-        document.getElementById("lib-edit-name").textContent = `Editar: ${this.activeLibEdit.name}`;
-        document.getElementById("lib-edit-url").value = this.activeLibEdit.videoId || "";
-        this.showOverlay("lib-editor-overlay");
-    }
-
-    async saveLibVideo() {
-        await db.collection("library").doc(this.activeLibEdit.id).update({ videoId: this.ytId(document.getElementById("lib-edit-url").value) });
-        this.hideOverlay("lib-editor-overlay"); this.toast("Atualizado!");
-    }
-
-    async addNewExercise() {
-        const name = document.getElementById("new-ex-name").value.toUpperCase();
-        if (!name) return;
-        await db.collection("library").doc("lib_" + Date.now()).set({ name, videoId: "", defaultSeries: "3x", category: "ALL" });
-        this.hideOverlay("new-exercise-overlay"); this.toast("Adicionado!");
-    }
+    openLibEditor(id) { this.activeLibEdit = this.library.find(e => e.id === id); document.getElementById("lib-edit-name").textContent = `Editar: ${this.activeLibEdit.name}`; document.getElementById("lib-edit-url").value = this.activeLibEdit.videoId || ""; this.showOverlay("lib-editor-overlay"); }
+    async saveLibVideo() { await db.collection("library").doc(this.activeLibEdit.id).update({ videoId: this.ytId(document.getElementById("lib-edit-url").value) }); this.hideOverlay("lib-editor-overlay"); this.toast("Atualizado!"); }
+    async addNewExercise() { const name = document.getElementById("new-ex-name").value.toUpperCase(); if (!name) return; await db.collection("library").doc("lib_" + Date.now()).set({ name, videoId: "", defaultSeries: "3x", category: "ALL" }); this.hideOverlay("new-exercise-overlay"); this.toast("Adicionado!"); }
 
     ytId(url) {
         if (!url) return ""; if (url.length === 11) return url;
@@ -412,9 +366,6 @@ class TitanApp {
 
     showOverlay(id) { document.getElementById(id).classList.remove("hidden"); }
     hideOverlay(id) { document.getElementById(id).classList.add("hidden"); document.querySelectorAll(`#${id} iframe`).forEach(f => f.src = ""); }
-    toast(msg) {
-        const el = document.createElement("div"); el.className = "toast"; el.textContent = msg;
-        document.body.appendChild(el); setTimeout(() => el.remove(), 2500);
-    }
+    toast(msg) { const el = document.createElement("div"); el.className = "toast"; el.textContent = msg; document.body.appendChild(el); setTimeout(() => el.remove(), 2500); }
 }
 const app = new TitanApp();

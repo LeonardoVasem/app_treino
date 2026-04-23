@@ -415,11 +415,58 @@ body {
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 18px 20px;
+    padding: 45px 20px 18px; /* Aumentado topo para safe area */
     border-bottom: 1px solid var(--border);
     background: var(--bg);
     flex-shrink: 0;
 }
+
+/* REST TIMER OVERLAY */
+.rest-timer-overlay {
+    position: absolute;
+    top: 105px; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.85);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    z-index: 500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: fadeIn 0.3s ease;
+}
+.timer-box {
+    text-align: center;
+    background: var(--surface);
+    padding: 40px;
+    border-radius: 50%;
+    width: 250px; height: 250px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border: 4px solid var(--primary);
+    box-shadow: 0 0 30px var(--primary-glow);
+}
+.timer-label {
+    font-size: 0.7rem;
+    font-weight: 800;
+    color: var(--primary);
+    letter-spacing: 2px;
+}
+.timer-val {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 4.5rem;
+    color: white;
+    line-height: 1;
+    margin: 10px 0;
+}
+.outline-btn.sm {
+    padding: 8px 20px;
+    width: auto;
+    font-size: 0.7rem;
+}
+
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 .exercise-modal-header h2 {
     flex: 1;
     font-family: 'Bebas Neue', sans-serif;
