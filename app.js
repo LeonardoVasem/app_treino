@@ -357,8 +357,9 @@ class TitanApp {
         if(!url) return "";
         let id = url;
         if(url.includes('v=')) id = url.split('v=')[1].split('&')[0];
-        else if(url.includes('youtu.be/')) id = url.split('youtu.be/')[1];
-        return id;
+        else if(url.includes('youtu.be/')) id = url.split('youtu.be/')[1].split('?')[0];
+        else if(url.includes('/shorts/')) id = url.split('/shorts/')[1].split('?')[0];
+        return id.split('/')[0].trim(); // Limpa barras extras ou espaços
     }
 
     toast(msg) {
