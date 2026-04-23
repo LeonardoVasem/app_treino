@@ -32,9 +32,21 @@ class TitanApp {
     async init() {
         if (db) {
             // Sincronização em Tempo Real com Firebase
-            db.collection("students").onSnapshot((snapshot) => {
-                this.students = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                this.refreshUI();
+            db.collection("students").onSnapshot(async (snapshot) => {
+                if (snapshot.empty) {
+                    // SEED: Se a nuvem estiver vazia, cria o seu primeiro aluno
+                    console.log("Cloud empty. Seeding initial data...");
+                    const initialData = this.getDefaultData();
+                    for (const student of initialData) {
+                        await db.collection("students").doc(student.id).set(student);
+                    }
+                } else {
+                    this.students = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    this.refreshUI();
+                }
+            }, (error) => {
+                console.error("Firebase Sync Error:", error);
+                this.toast("Erro de conexão com a Nuvem. Verifique as Regras do Firestore.");
             });
         } else {
             // Fallback para LocalStorage se o Firebase não estiver configurado
