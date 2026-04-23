@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>TITAN LOAD | Elite Training</title>
     <link rel="stylesheet" href="style.css">
-    <link rel="manifest" href="manifest.json">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
@@ -42,17 +41,16 @@
             </header>
             
             <div class="user-profile">
-                <div class="avatar" id="user-avatar">LV</div>
                 <div class="info">
                     <h2 id="user-name">Carregando...</h2>
-                    <p class="rank">LEVEL 12 · TITAN ASPIRANTE</p>
+                    <p class="rank">TITAN ASPIRANTE</p>
                 </div>
             </div>
 
-            <div class="stats-row">
-                <div class="mini-card"><span class="val" id="total-workouts">0</span><span class="lab">Treinos</span></div>
-                <div class="mini-card highlight"><span class="val" id="total-volume">0.0k</span><span class="lab">Vol. Total</span></div>
-                <div class="mini-card"><span class="val" id="total-records">0</span><span class="lab">Recordes</span></div>
+            <div class="stats-row" style="display:grid; grid-template-columns: repeat(3, 1fr); gap:10px; margin-bottom:30px;">
+                <div class="mini-card"><span class="val" id="total-workouts">0</span><span class="lab" style="font-size:0.6rem">Treinos</span></div>
+                <div class="mini-card"><span class="val" id="total-volume">0.0k</span><span class="lab" style="font-size:0.6rem">Vol (t)</span></div>
+                <div class="mini-card"><span class="val" id="total-records">0</span><span class="lab" style="font-size:0.6rem">Recordes</span></div>
             </div>
 
             <section class="workout-selection">
@@ -61,118 +59,26 @@
             </section>
         </div>
 
-        <!-- Central do Trainer -->
-        <div id="trainer-screen" class="screen hidden">
-            <header class="trainer-header">
-                <div class="logo">TITAN<span>TRAINER</span></div>
-                <button id="back-to-app" class="icon-btn"><i data-lucide="arrow-left"></i></button>
-            </header>
-            <div class="trainer-layout">
-                <aside class="trainer-sidebar">
-                    <div class="sidebar-section">
-                        <h3><i data-lucide="users"></i> MEUS ALUNOS</h3>
-                        <div id="student-list" class="list-container"></div>
-                        <button class="add-btn">+ Adicionar Aluno</button>
-                    </div>
-                    <div class="sidebar-section" style="margin-top: 30px;">
-                        <h3><i data-lucide="dumbbell"></i> BIBLIOTECA</h3>
-                        <p style="font-size:0.6rem; color:var(--text-dim); margin-bottom:10px;">Clique no ícone para editar o vídeo global</p>
-                        <div id="exercise-library" class="list-container library-pool"></div>
-                    </div>
-                </aside>
-
-                <main class="trainer-main">
-                    <div id="student-dashboard" class="hidden">
-                        <div class="student-header">
-                            <div>
-                                <h2 id="selected-student-name">...</h2>
-                                <p id="selected-student-id" style="font-size:0.7rem; color:var(--text-dim)"></p>
-                            </div>
-                            <div class="student-stats">
-                                <span>Volume: <b id="s-vol">---</b></span>
-                                <span>Treinos: <b id="s-count">---</b></span>
-                            </div>
-                        </div>
-
-                        <div class="weekly-planner">
-                            <div class="planner-days" id="week-selector">
-                                <button class="day-btn" data-day="SEG"><b>SEG</b><span class="day-status">---</span></button>
-                                <button class="day-btn" data-day="TER"><b>TER</b><span class="day-status">---</span></button>
-                                <button class="day-btn" data-day="QUA"><b>QUA</b><span class="day-status">---</span></button>
-                                <button class="day-btn" data-day="QUI"><b>QUI</b><span class="day-status">---</span></button>
-                                <button class="day-btn" data-day="SEX"><b>SEX</b><span class="day-status">---</span></button>
-                                <button class="day-btn" data-day="SAB"><b>SAB</b><span class="day-status">---</span></button>
-                                <button class="day-btn" data-day="DOM"><b>DOM</b><span class="day-status">---</span></button>
-                            </div>
-                        </div>
-
-                        <div class="builder-container">
-                            <div class="builder-column">
-                                <div class="col-header">
-                                    <input type="text" id="day-workout-name" class="title-input" placeholder="NOME DO TREINO (EX: PEITO)">
-                                    <span class="hint">Adicione itens da biblioteca</span>
-                                </div>
-                                <div id="active-workout-builder" class="builder-dropzone"></div>
-
-                                <div class="progression-history" style="margin-top:40px;">
-                                    <h3 style="font-family:'Bebas Neue'; color:var(--primary); margin-bottom:15px;">HISTÓRICO DE EVOLUÇÃO</h3>
-                                    <div id="student-history-list" class="history-grid"></div>
-                                </div>
-                            </div>
-                            
-                            <div class="builder-inspector">
-                                <div id="inspector-content">
-                                    <div class="video-box" id="inspector-video"></div>
-                                    <div class="editor-pane">
-                                        <h3 id="ins-name">Configurar Séries</h3>
-                                        <div id="ins-form">
-                                            <div class="grid-2">
-                                                <div><label>Séries</label><input type="text" id="ins-series"></div>
-                                                <div><label>Meta Reps</label><input type="text" id="ins-reps"></div>
-                                            </div>
-                                            <button id="save-ins-btn" class="glow-btn">SALVAR NO ALUNO</button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div id="no-student-selected" class="empty-state">
-                        <i data-lucide="layout-template"></i>
-                        <p>Selecione um aluno para começar a montar o treino</p>
-                    </div>
-                </main>
-            </div>
-        </div>
-
-        <!-- Modal de Edição de Biblioteca (Global) -->
-        <div id="lib-editor-overlay" class="overlay hidden">
-            <div class="overlay-glass"></div>
-            <div class="overlay-modal small">
-                <header class="modal-header">
-                    <h2 id="lib-edit-name">Editar Exercício</h2>
-                    <button onclick="document.getElementById('lib-editor-overlay').classList.add('hidden')" class="close-btn"><i data-lucide="x"></i></button>
-                </header>
-                <div class="modal-body">
-                    <div class="video-box" id="lib-edit-video"></div>
-                    <label>LINK DO YOUTUBE (Global)</label>
-                    <input type="text" id="lib-edit-url" class="full-input" placeholder="Cole o link aqui">
-                    <button id="save-lib-btn" class="glow-btn" style="margin-top:20px;">ATUALIZAR VÍDEO PARA TODOS</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Tela de Treino Ativo -->
+        <!-- Execução de Treino -->
         <div id="workout-screen" class="screen hidden">
-            <header class="active-header">
-                <button id="cancel-workout" class="text-btn">SAIR</button>
-                <div class="timer-main" id="workout-duration">00:00</div>
-                <button id="finish-workout" class="primary-btn sm">FINALIZAR</button>
+            <header class="workout-header">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <h2 id="active-workout-name">TREINO</h2>
+                    <button id="cancel-workout" class="close-btn"><i data-lucide="x"></i></button>
+                </div>
+                <div class="progress-container">
+                    <div id="workout-progress-bar" class="progress-bar"></div>
+                </div>
             </header>
+
             <div id="exercise-feed" class="exercise-feed"></div>
+            
+            <div id="finish-btn-container" class="finish-container hidden" style="position:fixed; bottom:30px; left:20px; right:20px;">
+                <button id="finish-workout" class="glow-btn">FINALIZAR TREINO 🔥</button>
+            </div>
         </div>
 
-        <!-- Overlay de Exercício (DESIGN PREMIUM MOBILE) -->
+        <!-- Overlay de Exercício (DESIGN PREMIUM) -->
         <div id="exercise-overlay" class="overlay hidden">
             <div class="overlay-glass"></div>
             <div class="overlay-modal fullscreen-mobile">
@@ -192,34 +98,75 @@
                         <div class="prog-card highlight">
                             <span>CARGA HOJE</span>
                             <input type="number" id="w-input" step="any" inputmode="decimal" placeholder="0">
-                            <label>KG</label>
+                            <label style="font-size:0.6rem; color:var(--primary); font-weight:800">KG</label>
                         </div>
                     </div>
 
-                    <div class="reps-card-container">
-                         <div class="prog-card highlight-alt">
-                            <span>REPETIÇÕES</span>
-                            <input type="number" id="r-input" inputmode="numeric" placeholder="0">
-                            <label>REPS</label>
-                        </div>
+                    <div class="prog-card highlight-alt" style="margin-bottom:20px;">
+                        <span>REPETIÇÕES</span>
+                        <input type="number" id="r-input" inputmode="numeric" placeholder="0">
+                        <label style="font-size:0.6rem; color:var(--text-dim); font-weight:800">REPS</label>
                     </div>
 
                     <button id="add-set-btn" class="glow-btn">REGISTRAR SÉRIE</button>
                     
-                    <h3 class="section-title" style="margin-top:30px">SÉRIES DE HOJE</h3>
+                    <h3 class="section-title">SÉRIES DE HOJE</h3>
                     <div class="set-history" id="modal-set-history"></div>
                 </div>
             </div>
         </div>
 
-        <div id="summary-screen" class="screen hidden">
-            <div class="summary-content">
-                <i data-lucide="award" class="award-icon"></i>
-                <h1>TREINO FINALIZADO!</h1>
-                <div class="summary-stats">
-                    <div class="s-stat"><span id="sum-volume">--</span><p>VOLUME</p></div>
+        <!-- Central do Trainer -->
+        <div id="trainer-screen" class="screen hidden">
+             <!-- (Conteúdo Trainer mantido para simplificar, focado no mobile agora) -->
+             <header class="workout-header">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <h2>TITAN<span>TRAINER</span></h2>
+                    <button id="back-to-app" class="close-btn"><i data-lucide="arrow-left"></i></button>
                 </div>
-                <button id="close-summary" class="glow-btn">CONTINUAR</button>
+            </header>
+            <div id="trainer-content">
+                <div class="trainer-sidebar">
+                    <div id="student-list"></div>
+                </div>
+                <div id="student-dashboard" class="hidden">
+                    <div class="student-header" style="padding:20px;">
+                        <h2 id="selected-student-name">...</h2>
+                        <div class="student-stats">
+                            <span>Volume <b id="s-vol">---</b></span>
+                            <span>Treinos <b id="s-count">---</b></span>
+                        </div>
+                    </div>
+                    <div class="planner-days" style="display:flex; gap:5px; padding:10px; overflow-x:auto">
+                        <button class="day-btn" data-day="SEG">SEG</button>
+                        <button class="day-btn" data-day="TER">TER</button>
+                        <button class="day-btn" data-day="QUA">QUA</button>
+                        <button class="day-btn" data-day="QUI">QUI</button>
+                        <button class="day-btn" data-day="SEX">SEX</button>
+                        <button class="day-btn" data-day="SAB">SAB</button>
+                        <button class="day-btn" data-day="DOM">DOM</button>
+                    </div>
+                    <div class="builder-container" style="padding:20px;">
+                         <input type="text" id="day-workout-name" class="title-input">
+                         <div id="exercise-library" style="display:flex; flex-wrap:wrap; gap:10px; margin:20px 0;"></div>
+                         <div id="active-workout-builder" class="builder-dropzone"></div>
+                    </div>
+                    <div class="builder-inspector" style="padding:20px;">
+                        <h3 id="ins-name">Selecione</h3>
+                        <div id="inspector-video" class="video-box"></div>
+                        <input type="text" id="ins-series" class="editor-pane input" placeholder="Séries (Ex: 3x)">
+                        <button id="save-ins-btn" class="glow-btn">SALVAR</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Summary -->
+        <div id="summary-screen" class="screen hidden">
+            <div style="height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center;">
+                <h1 style="font-family:'Bebas Neue'; font-size:3rem; color:var(--primary);">TREINO FINALIZADO! 🔥</h1>
+                <p style="margin-bottom:30px">Volume Total: <b id="sum-volume">--</b></p>
+                <button id="close-summary" class="glow-btn" style="width:200px">FECHAR</button>
             </div>
         </div>
 
