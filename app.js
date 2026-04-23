@@ -14,7 +14,7 @@ const FIREBASE_CONFIG = {
 };
 
 // CONFIGURAÇÃO DE ACESSO
-const TRAINER_EMAIL = "leonardovasem@gmail.com"; // LOGIN MASTER
+const TRAINER_EMAIL = "leonardovasen@gmail.com"; // LOGIN MASTER
 
 if (firebase.apps.length === 0) firebase.initializeApp(FIREBASE_CONFIG);
 const db = firebase.firestore();
