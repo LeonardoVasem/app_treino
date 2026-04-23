@@ -69,6 +69,9 @@ class TitanApp {
             this.currentUser = { id: snap.id, ...snap.data() };
         }
 
+        // Importar novos exercícios se necessário
+        await this.importNewExercises();
+
         // 2. Real-time library listener
         db.collection("library").onSnapshot(s => {
             this.library = s.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -629,6 +632,44 @@ class TitanApp {
         el.textContent = msg;
         document.body.appendChild(el);
         setTimeout(() => el.remove(), 2500);
+    }
+
+    async importNewExercises() {
+        const list = [
+            "ALONGAMENTOS 2,31,30",
+            "DEPRESSÃO ESCAPULAR PUXADA ALTA",
+            "SUPINO INCLINADO MÁQUINA",
+            "REMADA BAIXA PRONADA",
+            "DESENVOLVIMENTO NA MÁQUINA",
+            "PUXADA ALTA SUPINADA",
+            "TRÍCEPS FRANCÊS COM HALTER - BISET",
+            "BÍCEPS COM HALTERES NO BANCO INCLINADO - BISET",
+            "ALONGAMENTOS 10,20,30",
+            "ADUÇÃO DE ESCÁPULAS EM REMADA BAIXA",
+            "REMADA NEUTRA NO BANCO INCLINADO - BISET",
+            "SUPINO COM HALTERES INCLINADO - BISET",
+            "REMADA MÁQUINA PRONADA",
+            "CRUCIFIXO NA MÁQUINA",
+            "TRÍCEPS CROSSOVER APOIADO - BISET",
+            "BÍCEPS COM HALTERES - BISET",
+            "EXTENSÃO DE TRONCO MÁQUINA",
+            "ALONGAMENTOS 13,18,31",
+            "GLÚTEO OSTRA",
+            "ELEVAÇÃO PÉLVICA",
+            "AGACHAMENTO HACK ANGULAR",
+            "CADEIRA FLEXORA",
+            "CADEIRA EXTENSORA",
+            "LEG PRESS HORIZONTAL PANTURRILHA"
+        ];
+
+        for (const name of list) {
+            const id = "lib_" + name.replace(/\s+/g, '_').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+            await db.collection("library").doc(id).set({
+                name: name.toUpperCase(),
+                videoId: "",
+                defaultSeries: "3x"
+            }, { merge: true });
+        }
     }
 }
 
