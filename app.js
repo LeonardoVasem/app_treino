@@ -1,4 +1,4 @@
-// --- TITAN LOAD CLOUD ARCHITECTURE ---
+// --- TITAN LOAD CLOUD ARCHITECTURE PRO ---
 
 const firebaseConfig = {
     apiKey: "AIzaSyCdLVzg_Uns3aRNT8jJLc_C8E2yZfV8RF0",
@@ -10,17 +10,6 @@ const firebaseConfig = {
     measurementId: "G-SWY71RQCFR"
 };
 
-const GLOBAL_LIBRARY = [
-    { id: "lib1", name: "ALONGAMENTOS", videoId: "9S_pU6q0Z6c", defaultSeries: "2x 30S", defaultReps: "---" },
-    { id: "lib2", name: "DEPRESSÃO ESCAPULAR", videoId: "f0aOqLp49lI", defaultSeries: "2x", defaultReps: "10" },
-    { id: "lib3", name: "SUPINO INCLINADO MÁQUINA", videoId: "SrqOu55lr6A", defaultSeries: "4x", defaultReps: "8-12" },
-    { id: "lib4", name: "DESENVOLVIMENTO MÁQUINA", videoId: "WvLMauqrnVA", defaultSeries: "3x", defaultReps: "8-12" },
-    { id: "lib5", name: "CRUCIFIXO MÁQUINA", videoId: "fC70O2KmsP0", defaultSeries: "2x", defaultReps: "8-12" },
-    { id: "lib6", name: "ELEVAÇÃO LATERAL", videoId: "3VcKaXpzqRo", defaultSeries: "2x", defaultReps: "8-12" },
-    { id: "lib7", name: "TRÍCEPS FRANCÊS HALTER", videoId: "nRiJXayFzY0", defaultSeries: "3x", defaultReps: "8-12" },
-    { id: "lib8", name: "EXTENSÃO DE TRONCO MÁQUINA", videoId: "CAwf7n6Luuc", defaultSeries: "3x", defaultReps: "8-12" }
-];
-
 let db = null;
 if (firebase.apps.length === 0) {
     firebase.initializeApp(firebaseConfig);
@@ -30,42 +19,43 @@ if (firebase.apps.length === 0) {
 class TitanApp {
     constructor() {
         this.students = [];
+        this.library = [];
+        this.history = [];
         this.currentUser = null;
         this.selectedStudent = null;
-        this.selectedDay = "SEG"; // Dia padrão
+        this.selectedDay = "SEG";
         this.activeExEdit = null;
-        this.sessionSets = [];
+        this.editMode = 'student'; // 'student' ou 'library'
         
         this.init();
     }
 
     async init() {
-        this.renderLibrary(); // Garante biblioteca imediata
-        
         if (db) {
-            db.collection("students").onSnapshot(async (snapshot) => {
-                if (snapshot.empty) {
-                    await this.seedInitialStudent();
-                } else {
-                    this.students = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                    this.syncCurrentState();
-                }
+            // Sincroniza Alunos
+            db.collection("students").onSnapshot(async (snap) => {
+                if (snap.empty) await this.seedInitialData();
+                this.students = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                this.syncUI();
+            });
+
+            // Sincroniza Biblioteca Global
+            db.collection("library").onSnapshot(snap => {
+                if (snap.empty) this.seedLibrary();
+                this.library = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                this.renderLibrary();
             });
         }
         this.setupListeners();
     }
 
-    async seedInitialStudent() {
+    async seedInitialData() {
         const initial = {
-            id: "LEO1",
-            name: "Leonardo Vasem",
+            id: "LEO1", name: "Leonardo Vasem",
             schedule: {
-                "SEG": { name: "SUPERIORES 1", exercises: [] },
-                "TER": { name: "COSTA / BICEPS", exercises: [] },
-                "QUA": { name: "DESCANSO", exercises: [] },
-                "QUI": { name: "PERNAS", exercises: [] },
-                "SEX": { name: "PEITO / TRICEPS", exercises: [] },
-                "SAB": { name: "DESCANSO", exercises: [] },
+                "SEG": { name: "SUPERIORES 1", exercises: [] }, "TER": { name: "DESCANSO", exercises: [] },
+                "QUA": { name: "DESCANSO", exercises: [] }, "QUI": { name: "DESCANSO", exercises: [] },
+                "SEX": { name: "DESCANSO", exercises: [] }, "SAB": { name: "DESCANSO", exercises: [] },
                 "DOM": { name: "DESCANSO", exercises: [] }
             },
             stats: { totalWorkouts: 0, volume: 0, records: 0 }
@@ -73,29 +63,51 @@ class TitanApp {
         await db.collection("students").doc(initial.id).set(initial);
     }
 
-    syncCurrentState() {
+    async seedLibrary() {
+        const lib = [
+            { id: "lib1", name: "ALONGAMENTOS", videoId: "9S_pU6q0Z6c", defaultSeries: "2x 30S" },
+            { id: "lib2", name: "DEPRESSÃO ESCAPULAR", videoId: "f0aOqLp49lI", defaultSeries: "2x" },
+            { id: "lib3", name: "SUPINO INCLINADO MÁQUINA", videoId: "SrqOu55lr6A", defaultSeries: "4x" }
+        ];
+        for (const ex of lib) await db.collection("library").doc(ex.id).set(ex);
+    }
+
+    syncUI() {
         if (!this.currentUser) this.currentUser = this.students.find(s => s.id === "LEO1") || this.students[0];
-        
         if (!document.getElementById('home-screen').classList.contains('hidden')) this.renderAthleteHome();
-        if (!document.getElementById('trainer-screen').classList.contains('hidden')) this.renderTrainer();
+        if (!document.getElementById('trainer-screen').classList.contains('hidden')) {
+            this.renderTrainer();
+            if (this.selectedStudent) this.loadStudentHistory();
+        }
         lucide.createIcons();
+    }
+
+    renderLibrary() {
+        const libEl = document.getElementById('exercise-library');
+        if (!libEl) return;
+        libEl.innerHTML = this.library.map(ex => `
+            <div class="list-item" data-id="${ex.id}" onclick="app.inspectLibraryItem('${ex.id}')">
+                <span>${ex.name}</span> <i data-lucide="edit-2" size="12"></i>
+            </div>
+        `).join('');
+        lucide.createIcons();
+        this.initSortable();
     }
 
     setupListeners() {
         document.getElementById('goto-trainer-btn').onclick = () => this.switchScreen('trainer-screen');
         document.getElementById('back-to-app').onclick = () => this.switchScreen('home-screen');
-        document.getElementById('finish-workout').onclick = () => this.finishWorkout();
-        document.getElementById('add-set-btn').onclick = () => this.addSet();
         document.getElementById('save-ins-btn').onclick = () => this.saveInspectorEdit();
+        document.getElementById('add-set-btn').onclick = () => this.addSet();
+        document.getElementById('finish-workout').onclick = () => this.finishWorkout();
         document.getElementById('close-summary').onclick = () => this.switchScreen('home-screen');
         document.querySelector('.close-btn').onclick = () => {
             document.getElementById('exercise-overlay').classList.add('hidden');
             document.getElementById('modal-video-container').innerHTML = '';
         };
 
-        // Week Selector
         document.querySelectorAll('.day-btn').forEach(btn => {
-            btn.onclick = (e) => {
+            btn.onclick = () => {
                 this.selectedDay = btn.dataset.day;
                 this.updateWeekUI();
                 this.renderWorkoutBuilder();
@@ -106,11 +118,10 @@ class TitanApp {
     switchScreen(id) {
         document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
         document.getElementById(id).classList.remove('hidden');
-        this.syncCurrentState();
+        this.syncUI();
     }
 
-    // --- ATHLETE LOGIC ---
-
+    // --- ATHLETE ---
     renderAthleteHome() {
         const s = this.currentUser.stats || { totalWorkouts: 0, volume: 0, records: 0 };
         document.getElementById('user-name').textContent = `Bem-vindo, ${this.currentUser.name.split(' ')[0]}`;
@@ -122,7 +133,7 @@ class TitanApp {
         const days = ["SEG", "TER", "QUA", "QUI", "SEX", "SAB", "DOM"];
         container.innerHTML = days.map(day => {
             const data = this.currentUser.schedule[day];
-            if(!data || data.name === "DESCANSO") return "";
+            if(!data || data.exercises.length === 0) return "";
             return `
                 <div class="workout-card"><div class="workout-card-body">
                     <span style="font-size:0.7rem; color:var(--primary); font-weight:800">${day}</span>
@@ -145,6 +156,7 @@ class TitanApp {
         const feed = document.getElementById('exercise-feed');
         feed.innerHTML = this.activeWorkout.exercises.map(ex => {
             const done = this.sessionSets.filter(s => s.id === ex.guid).length;
+            const libInfo = this.library.find(l => l.name === ex.name) || ex;
             return `
                 <div class="workout-card" onclick="app.openExerciseModal('${ex.guid}')">
                     <div class="workout-card-body" style="padding:15px; background:var(--surface-light); display:flex; justify-content:space-between; align-items:center;">
@@ -159,11 +171,12 @@ class TitanApp {
 
     openExerciseModal(guid) {
         this.selectedEx = this.activeWorkout.exercises.find(e => e.guid === guid);
+        const libEx = this.library.find(l => l.name === this.selectedEx.name) || this.selectedEx;
         document.getElementById('modal-name').textContent = this.selectedEx.name;
         document.getElementById('modal-prev-load').textContent = (this.selectedEx.weight || 0) + 'kg';
         document.getElementById('w-input').value = this.selectedEx.weight || "";
         
-        const vidID = this.extractYoutubeId(this.selectedEx.videoId);
+        const vidID = this.extractYoutubeId(libEx.videoId);
         document.getElementById('modal-video-container').innerHTML = `<iframe src="https://www.youtube.com/embed/${vidID}?autoplay=1&mute=1&playsinline=1" frameborder="0"></iframe>`;
         document.getElementById('exercise-overlay').classList.remove('hidden');
     }
@@ -180,76 +193,128 @@ class TitanApp {
         this.renderExerciseFeed();
     }
 
-    finishWorkout() {
+    async finishWorkout() {
         const vol = this.sessionSets.reduce((acc, s) => acc + (s.w * s.r), 0);
+        const recs = this.sessionSets.filter(s => {
+            const ex = this.activeWorkout.exercises.find(e => e.guid === s.id);
+            return s.w >= (ex.weight || 0);
+        }).length;
+
         this.currentUser.stats.volume += vol;
         this.currentUser.stats.totalWorkouts++;
-        this.save();
+        
+        // Salva Sessão no Histórico
+        await db.collection("sessions").add({
+            studentId: this.currentUser.id,
+            date: new Date().toLocaleDateString('pt-BR'),
+            volume: vol,
+            records: recs,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        await this.save();
+        document.getElementById('sum-volume').textContent = (vol/1000).toFixed(1) + 't';
         this.switchScreen('summary-screen');
     }
 
+    // --- TRAINER ---
+    selectStudent(id) {
+        this.selectedStudent = this.students.find(s => s.id === id);
+        document.getElementById('no-student-selected').classList.add('hidden');
+        document.getElementById('student-dashboard').classList.remove('hidden');
+        document.getElementById('selected-student-name').textContent = this.selectedStudent.name;
+        this.updateWeekUI();
+        this.renderWorkoutBuilder();
+        this.loadStudentHistory();
+        this.renderTrainer();
+    }
 
-    // --- TRAINER LOGIC (THE BUILDER) ---
+    async loadStudentHistory() {
+        const snap = await db.collection("sessions")
+            .where("studentId", "==", this.selectedStudent.id)
+            .orderBy("timestamp", "desc")
+            .limit(10)
+            .get();
+        
+        const histEl = document.getElementById('student-history-list');
+        histEl.innerHTML = snap.docs.map(doc => {
+            const s = doc.data();
+            return `<div class="history-item">
+                <span class="date">${s.date}</span>
+                <span class="vol">${(s.volume/1000).toFixed(1)} TON</span>
+                <span class="recs">${s.records} RECORDES</span>
+            </div>`;
+        }).join('');
+    }
 
-    renderLibrary() {
-        const lib = document.getElementById('exercise-library');
-        if(!lib) return;
-        lib.innerHTML = GLOBAL_LIBRARY.map(ex => `
-            <div class="list-item" data-id="${ex.id}"><span>${ex.name}</span> <i data-lucide="plus" size="14"></i></div>
-        `).join('');
-        lucide.createIcons();
+    inspectLibraryItem(id) {
+        this.editMode = 'library';
+        this.activeExEdit = this.library.find(ex => ex.id === id);
+        this.populateInspector();
+    }
+
+    inspectExercise(guid) {
+        this.editMode = 'student';
+        this.activeExEdit = this.selectedStudent.schedule[this.selectedDay].exercises.find(e => e.guid === guid);
+        this.populateInspector();
+    }
+
+    populateInspector() {
+        const ex = this.activeExEdit;
+        const libEx = this.library.find(l => l.name === ex.name) || ex;
+        document.getElementById('ins-name').textContent = ex.name + (this.editMode === 'library' ? ' (GLOBAL)' : '');
+        document.getElementById('ins-video-id').value = libEx.videoId;
+        document.getElementById('ins-series').value = ex.series || ex.defaultSeries;
+        document.getElementById('ins-reps').value = "8-12";
+        
+        const vidID = this.extractYoutubeId(libEx.videoId);
+        document.getElementById('inspector-video').innerHTML = `<iframe src="https://www.youtube.com/embed/${vidID}?autoplay=1&mute=1" frameborder="0"></iframe>`;
+    }
+
+    async saveInspectorEdit() {
+        if(!this.activeExEdit) return;
+        const vid = this.extractYoutubeId(document.getElementById('ins-video-id').value);
+        
+        if (this.editMode === 'library') {
+            await db.collection("library").doc(this.activeExEdit.id).update({ videoId: vid });
+            this.toast("Biblioteca Global Atualizada!");
+        } else {
+            this.activeExEdit.series = document.getElementById('ins-series').value;
+            this.activeExEdit.totalSets = parseInt(this.activeExEdit.series) || 3;
+            // O vídeo não salva no aluno, ele puxa da biblioteca agora!
+            await this.save();
+            this.toast("Treino do Aluno Salvo!");
+        }
+        this.renderWorkoutBuilder();
     }
 
     renderTrainer() {
-        this.renderLibrary();
         const slist = document.getElementById('student-list');
         slist.innerHTML = this.students.map(s => `
             <div class="list-item ${this.selectedStudent?.id === s.id ? 'active' : ''}" onclick="app.selectStudent('${s.id}')">
                 <span>${s.name}</span>
             </div>
         `).join('');
-        this.initSortable();
-    }
-
-    selectStudent(id) {
-        this.selectedStudent = this.students.find(s => s.id === id);
-        document.getElementById('no-student-selected').classList.add('hidden');
-        document.getElementById('student-dashboard').classList.remove('hidden');
-        document.getElementById('selected-student-name').textContent = this.selectedStudent.name;
-        document.getElementById('selected-student-id').textContent = `ID: ${this.selectedStudent.id}`;
-        
-        this.updateWeekUI();
-        this.renderWorkoutBuilder();
-        this.renderTrainer();
     }
 
     updateWeekUI() {
         document.querySelectorAll('.day-btn').forEach(btn => {
             const day = btn.dataset.day;
-            const sched = this.selectedStudent.schedule[day];
             btn.classList.toggle('active', day === this.selectedDay);
-            btn.querySelector('.day-status').textContent = sched?.name || '---';
+            const sched = this.selectedStudent.schedule[day];
+            btn.querySelector('.day-status').textContent = sched?.exercises.length > 0 ? 'TREINO' : 'DESC';
         });
     }
 
     renderWorkoutBuilder() {
         const dropzone = document.getElementById('active-workout-builder');
-        const dayData = this.selectedStudent.schedule[this.selectedDay] || { name: 'DESCANSO', exercises: [] };
-        
-        dropzone.innerHTML = dayData.exercises.map((ex, idx) => `
+        const exercises = this.selectedStudent.schedule[this.selectedDay].exercises;
+        dropzone.innerHTML = exercises.map((ex, idx) => `
             <div class="list-item" onclick="app.inspectExercise('${ex.guid}')">
                 <span>${idx + 1}. ${ex.name}</span>
-                <div style="margin-left:auto; display:flex; gap:10px;">
-                    <i data-lucide="edit-3" size="14"></i>
-                    <i data-lucide="trash-2" size="14" onclick="event.stopPropagation(); app.removeExercise('${ex.guid}')"></i>
-                </div>
+                <i data-lucide="trash-2" size="14" style="margin-left:auto" onclick="event.stopPropagation(); app.removeExercise('${ex.guid}')"></i>
             </div>
         `).join('');
-        
-        if(dayData.exercises.length === 0) {
-            dropzone.innerHTML = `<p style="color:var(--text-dim); text-align:center; padding:20px">Clique em um exercício da biblioteca para adicionar à ${this.selectedDay}</p>`;
-        }
-        
         lucide.createIcons();
     }
 
@@ -257,75 +322,29 @@ class TitanApp {
         const libEl = document.getElementById('exercise-library');
         const dropEl = document.getElementById('active-workout-builder');
         if(!libEl || !dropEl) return;
-
         Sortable.get(libEl)?.destroy();
         Sortable.get(dropEl)?.destroy();
-
-        new Sortable(libEl, {
-            group: { name: 'shared', pull: 'clone', put: false },
-            sort: false,
-            animation: 150
-        });
-
+        new Sortable(libEl, { group: { name:'sh', pull:'clone', put:false }, sort:false });
         new Sortable(dropEl, {
-            group: 'shared',
-            animation: 150,
+            group: 'sh', animation:150,
             onAdd: (evt) => {
-                const libId = evt.item.dataset.id;
-                const libEx = GLOBAL_LIBRARY.find(e => e.id === libId);
-                this.addExerciseToWorkout(libEx, evt.newIndex);
+                const libEx = this.library.find(e => e.id === evt.item.dataset.id);
+                this.addExercise(libEx, evt.newIndex);
                 evt.item.remove();
-            },
-            onEnd: (evt) => {
-                this.reorderWorkout(evt.oldIndex, evt.newIndex);
             }
         });
     }
 
-    addExerciseToWorkout(libEx, index) {
-        const newEx = {
-            guid: 'g' + Date.now(),
-            name: libEx.name,
-            videoId: libEx.videoId,
-            series: libEx.defaultSeries,
-            totalSets: parseInt(libEx.defaultSeries) || 3,
-            weight: 0
-        };
-        const sched = this.selectedStudent.schedule[this.selectedDay];
-        if(sched.name === "DESCANSO") sched.name = "TREINO " + this.selectedDay;
-        sched.exercises.splice(index, 0, newEx);
-        this.save();
-        this.renderWorkoutBuilder();
-        this.updateWeekUI();
-    }
-
-    reorderWorkout(oldIdx, newIdx) {
-        const exercises = this.selectedStudent.schedule[this.selectedDay].exercises;
-        const [moved] = exercises.splice(oldIdx, 1);
-        exercises.splice(newIdx, 0, moved);
+    addExercise(libEx, idx) {
+        const newEx = { guid: 'g'+Date.now(), name: libEx.name, series: libEx.defaultSeries, weight: 0 };
+        this.selectedStudent.schedule[this.selectedDay].exercises.splice(idx, 0, newEx);
         this.save();
         this.renderWorkoutBuilder();
     }
 
-    inspectExercise(guid) {
-        const exercises = this.selectedStudent.schedule[this.selectedDay].exercises;
-        this.activeExEdit = exercises.find(e => e.guid === guid);
-        document.getElementById('ins-name').textContent = this.activeExEdit.name;
-        document.getElementById('ins-video-id').value = this.activeExEdit.videoId;
-        document.getElementById('ins-series').value = this.activeExEdit.series;
-        document.getElementById('ins-reps').value = "8-12";
-        
-        const vidID = this.extractYoutubeId(this.activeExEdit.videoId);
-        document.getElementById('inspector-video').innerHTML = `<iframe src="https://www.youtube.com/embed/${vidID}?autoplay=1&mute=1" frameborder="0"></iframe>`;
-    }
-
-    saveInspectorEdit() {
-        if(!this.activeExEdit) return;
-        this.activeExEdit.videoId = this.extractYoutubeId(document.getElementById('ins-video-id').value);
-        this.activeExEdit.series = document.getElementById('ins-series').value;
-        this.activeExEdit.totalSets = parseInt(this.activeExEdit.series) || 3;
+    removeExercise(guid) {
+        this.selectedStudent.schedule[this.selectedDay].exercises = this.selectedStudent.schedule[this.selectedDay].exercises.filter(e => e.guid !== guid);
         this.save();
-        this.toast("Salvo com sucesso!");
         this.renderWorkoutBuilder();
     }
 
@@ -337,23 +356,15 @@ class TitanApp {
         return id;
     }
 
-    removeExercise(guid) {
-        const sched = this.selectedStudent.schedule[this.selectedDay];
-        sched.exercises = sched.exercises.filter(e => e.guid !== guid);
-        this.save();
-        this.renderWorkoutBuilder();
-    }
-
     async save() {
-        if (db) {
-            const ref = db.collection("students").doc(this.selectedStudent ? this.selectedStudent.id : this.currentUser.id);
-            await ref.set(this.selectedStudent || this.currentUser);
+        if (db && this.selectedStudent) {
+            await db.collection("students").doc(this.selectedStudent.id).set(this.selectedStudent);
         }
     }
 
     toast(msg) {
         const t = document.createElement('div');
-        t.style.cssText = `position:fixed; bottom:50px; left:50%; transform:translateX(-50%); background:var(--primary); color:#000; padding:12px 24px; border-radius:30px; font-weight:800; z-index:3000; border:2px solid black;`;
+        t.style.cssText = `position:fixed; bottom:50px; left:50%; transform:translateX(-50%); background:var(--primary); color:#000; padding:12px 24px; border-radius:30px; font-weight:800; z-index:3000;`;
         t.textContent = msg;
         document.body.appendChild(t);
         setTimeout(() => t.remove(), 2500);
