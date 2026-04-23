@@ -24,7 +24,7 @@ class TitanApp {
         this.selectedStudent = null;
         this.selectedDay = "SEG";
         this.activeExEdit = null;
-        
+        window.app = this; // Expose app globally for inline clicks
         this.init();
     }
 

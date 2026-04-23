@@ -45,13 +45,13 @@ body { background: var(--bg); color: var(--text); height: 100vh; width: 100vw; o
 .planner-days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; }
 .day-btn { 
     background: var(--surface); border: 1px solid #333; border-radius: 14px; 
-    padding: 18px 5px; cursor: pointer; transition: 0.2s; text-align: center; color: white;
+    padding: 18px 5px; cursor: pointer; transition: 0.2s; text-align: center; color: #ffffff !important;
 }
 .day-btn:hover { border-color: #555; background: #1a1a1a; }
 .day-btn.active { border-color: var(--primary); background: var(--primary-dim); }
-.day-btn b { display: block; font-size: 1rem; margin-bottom: 4px; font-family: 'Bebas Neue'; }
-.day-btn .day-status { font-size: 0.5rem; color: var(--text-dim); text-transform: uppercase; font-weight: 800; opacity: 0.6; }
-.day-btn.active .day-status { color: var(--primary); opacity: 1; }
+.day-btn b { display: block; font-size: 1rem; margin-bottom: 4px; font-family: 'Bebas Neue'; color: #ffffff !important; }
+.day-btn .day-status { font-size: 0.5rem; color: #ffffff !important; text-transform: uppercase; font-weight: 800; opacity: 0.6; }
+.day-btn.active .day-status { color: var(--primary) !important; opacity: 1; }
 
 /* Trainer Base */
 .trainer-layout { display: grid; grid-template-columns: 320px 1fr; height: calc(100vh - 80px); }
@@ -81,6 +81,7 @@ body { background: var(--bg); color: var(--text); height: 100vh; width: 100vw; o
 .overlay { position: fixed; inset: 0; z-index: 3000; display: flex; flex-direction: column; }
 .overlay-glass { position: absolute; inset: 0; background: rgba(0,0,0,0.9); backdrop-filter: blur(10px); }
 .overlay-modal { position: relative; background: #000; width: 100%; height: 100vh; overflow-y: auto; }
+.overlay-modal.fullscreen-mobile { height: 100vh !important; border-radius: 0 !important; }
 .overlay-modal.small { width: 450px; height: auto; margin: auto; border-radius: 30px; border: 1px solid #222; padding-bottom: 30px; }
 .modal-body { padding: 30px; }
 

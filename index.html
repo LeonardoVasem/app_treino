@@ -146,7 +146,7 @@
             </div>
         </div>
 
-        <!-- Tela de Treino Ativo e Overlay de Exercício mantidos... -->
+        <!-- Tela de Treino Ativo -->
         <div id="workout-screen" class="screen hidden">
             <header class="active-header">
                 <button id="cancel-workout" class="text-btn">SAIR</button>
@@ -158,7 +158,7 @@
 
         <div id="exercise-overlay" class="overlay hidden">
             <div class="overlay-glass"></div>
-            <div class="overlay-modal">
+            <div class="overlay-modal fullscreen-mobile">
                 <header class="modal-header">
                     <button class="close-btn"><i data-lucide="chevron-down"></i></button>
                     <h2 id="modal-name">Nome</h2>
@@ -168,8 +168,14 @@
                     <div class="load-tracker">
                         <div class="prev-info">RECORDE: <span id="modal-prev-load">---</span></div>
                         <div class="input-grid">
-                            <div class="field"><label>CARGA (KG)</label><input type="number" id="w-input" placeholder="0"></div>
-                            <div class="field"><label>REPS</label><input type="number" id="r-input" placeholder="0"></div>
+                            <div class="field">
+                                <label>CARGA (KG)</label>
+                                <input type="number" id="w-input" step="any" inputmode="decimal" placeholder="0">
+                            </div>
+                            <div class="field">
+                                <label>REPS</label>
+                                <input type="number" id="r-input" inputmode="numeric" placeholder="0">
+                            </div>
                         </div>
                         <button id="add-set-btn" class="glow-btn">REGISTRAR SÉRIE</button>
                     </div>
