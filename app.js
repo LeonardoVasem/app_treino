@@ -239,8 +239,17 @@ class TitanApp {
 
     saveTrainerExercise() {
         const form = document.getElementById('exercise-form');
+        const rawId = form.videoId.value;
+        
+        // Helper to extract ID from full URL
+        let videoId = rawId;
+        if (rawId.includes('youtube.com') || rawId.includes('youtu.be')) {
+            const url = new URL(rawId.includes('http') ? rawId : 'https://' + rawId);
+            videoId = url.searchParams.get('v') || url.pathname.split('/').pop();
+        }
+
         this.selectedTrainerEx.name = form.name.value;
-        this.selectedTrainerEx.videoId = form.videoId.value;
+        this.selectedTrainerEx.videoId = videoId;
         this.selectedTrainerEx.series = form.series.value;
         this.save();
         this.toast("Alterações salvas!");

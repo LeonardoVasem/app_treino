@@ -17,7 +17,7 @@ body { background: var(--bg); color: var(--text); overflow-x: hidden; height: 10
 .screen {
     width: 100%;
     min-height: 100vh;
-    padding: 20px;
+    padding: 30px 20px;
     transition: opacity 0.3s;
 }
 
@@ -35,10 +35,16 @@ body { background: var(--bg); color: var(--text); overflow-x: hidden; height: 10
 }
 .rank { color: var(--primary); font-size: 0.7rem; font-weight: 800; letter-spacing: 1px; }
 
-.stats-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 40px; }
+.stats-row { 
+    display: grid; 
+    grid-template-columns: repeat(3, 1fr); 
+    gap: 10px; 
+    margin-bottom: 40px; 
+}
 .mini-card { 
-    background: var(--surface); padding: 15px; border-radius: var(--radius);
+    background: var(--surface); padding: 15px 5px; border-radius: var(--radius);
     text-align: center; border: 1px solid rgba(255,255,255,0.05);
+    display: flex; flex-direction: column; justify-content: center; gap: 4px;
 }
 .mini-card.highlight { border-color: var(--primary-dim); box-shadow: 0 5px 15px rgba(191, 255, 0, 0.05); }
 .mini-card .val { display: block; font-size: 1.2rem; font-weight: 800; color: var(--primary); }
@@ -87,6 +93,20 @@ body { background: var(--bg); color: var(--text); overflow-x: hidden; height: 10
 .trainer-layout { display: grid; grid-template-columns: 350px 1fr; height: calc(100vh - 80px); }
 .sidebar { border-right: 1px solid rgba(255,255,255,0.05); padding: 20px; overflow-y: auto; }
 .preview-area { padding: 40px; display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
+
+.editor-pane { 
+    background: var(--surface); padding: 30px; border-radius: var(--radius); 
+    border: 1px solid rgba(255,255,255,0.05);
+}
+.editor-pane h3 { font-family: 'Bebas Neue'; font-size: 1.5rem; margin-bottom: 20px; color: var(--primary); }
+
+#exercise-form label { display: block; font-size: 0.7rem; color: var(--text-dim); text-transform: uppercase; margin-bottom: 8px; }
+#exercise-form input { 
+    width: 100%; background: var(--bg); border: 1px solid #333; padding: 12px; 
+    color: white; border-radius: 12px; margin-bottom: 20px; font-size: 1rem;
+    transition: border-color 0.3s;
+}
+#exercise-form input:focus { border-color: var(--primary); outline: none; }
 
 .ex-tester-card { 
     background: var(--surface); padding: 15px; border-radius: 12px; margin-bottom: 10px; cursor: pointer;
