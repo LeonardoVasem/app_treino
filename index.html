@@ -13,98 +13,140 @@
 </head>
 <body class="athlete-mode">
     <div id="app">
-        <!-- Top Branding -->
-        <header class="app-branding">
-            <div class="logo">TITAN<span>LOAD</span></div>
-            <button id="toggle-mode-btn" title="Alternar para Trainer">
-                <i data-lucide="shield-check"></i>
-            </button>
-        </header>
-
-        <!-- Athlete View -->
-        <div id="athlete-view" class="view">
-            <nav class="workout-tabs" id="tab-container">
-                <!-- Dynamic Tabs -->
-            </nav>
-
-            <main class="content">
-                <div id="active-workout-header">
-                    <h1 id="workout-title">CARREGANDO...</h1>
-                    <div class="progress-bar-container">
-                        <div class="progress-fill" style="width: 0%"></div>
-                    </div>
+        <!-- Dashboard / Home Screen -->
+        <div id="home-screen" class="screen">
+            <header class="app-branding">
+                <div class="logo">TITAN<span>LOAD</span></div>
+                <button id="goto-trainer-btn" class="icon-btn"><i data-lucide="wrench"></i></button>
+            </header>
+            
+            <div class="user-profile">
+                <div class="avatar">LV</div>
+                <div class="info">
+                    <h2>Bem-vindo, Leonardo</h2>
+                    <p class="rank">LEVEL 12 · TITAN ASPIRANTE</p>
                 </div>
+            </div>
 
-                <div id="exercise-list" class="exercises-container">
-                    <!-- Exercise cards go here -->
+            <div class="stats-row">
+                <div class="mini-card">
+                    <span class="val" id="total-workouts">0</span>
+                    <span class="lab">Treinos</span>
                 </div>
-            </main>
+                <div class="mini-card highlight">
+                    <span class="val" id="total-volume">0k</span>
+                    <span class="lab">Volume Total</span>
+                </div>
+                <div class="mini-card">
+                    <span class="val" id="total-records">0</span>
+                    <span class="lab">Recordes</span>
+                </div>
+            </div>
+
+            <section class="workout-selection">
+                <h3>ESCOLHA SEU DESAFIO</h3>
+                <div id="workout-cards-container">
+                    <!-- Cards will be injected -->
+                </div>
+            </section>
         </div>
 
-        <!-- Trainer View (Desktop Focused) -->
-        <div id="trainer-view" class="view hidden">
-            <div class="trainer-grid">
-                <aside class="exercise-bank">
-                    <h2>Biblioteca</h2>
-                    <div id="bank-list"></div>
-                </aside>
-                <section class="workout-builder">
-                    <div class="builder-header">
-                        <h2>Montagem de Treino</h2>
-                        <button class="add-workout-btn">+ Novo Treino</button>
-                    </div>
-                    <div id="builder-canvas">
-                        <!-- Draggable exercises here -->
-                    </div>
-                </section>
+        <!-- Active Workout Screen -->
+        <div id="workout-screen" class="screen hidden">
+            <header class="active-header">
+                <button id="cancel-workout" class="text-btn">CANCELAR</button>
+                <div class="timer-main" id="workout-duration">00:00</div>
+                <button id="finish-workout" class="primary-btn sm">FINALIZAR</button>
+            </header>
+
+            <div class="progress-bar-container">
+                <div class="progress-fill" id="overall-progress" style="width: 0%"></div>
+            </div>
+
+            <div id="exercise-feed" class="exercise-feed">
+                <!-- Stack of exercises -->
             </div>
         </div>
 
-        <!-- Exercise Focus Overlay -->
+        <!-- Workout Summary Screen (The Prize) -->
+        <div id="summary-screen" class="screen hidden">
+            <div class="summary-content">
+                <i data-lucide="trophy" class="trophy-icon"></i>
+                <h1>TREINO CONCLUÍDO!</h1>
+                <div class="summary-stats">
+                    <div class="s-stat">
+                        <span id="sum-volume">0kg</span>
+                        <p>Volume Levantado</p>
+                    </div>
+                    <div class="s-stat">
+                        <span id="sum-duration">0m</span>
+                        <p>Tempo Total</p>
+                    </div>
+                </div>
+                <button id="close-summary" class="glow-btn">VOLTAR AO INÍCIO</button>
+            </div>
+        </div>
+
+        <!-- Trainer Desktop Screen -->
+        <div id="trainer-screen" class="screen hidden">
+            <header class="trainer-header">
+                <div class="logo">TITAN<span>TRAINER</span></div>
+                <button id="back-to-app" class="icon-btn"><i data-lucide="arrow-left"></i></button>
+            </header>
+            <div class="trainer-layout">
+                <aside class="sidebar">
+                    <div class="search-box">
+                        <input type="text" placeholder="Buscar exercício...">
+                    </div>
+                    <div id="full-exercise-list">
+                        <!-- List all for testing videos -->
+                    </div>
+                </aside>
+                <main class="preview-area">
+                    <div id="video-tester">
+                        <div class="placeholder-msg">Selecione um exercício para testar o vídeo</div>
+                    </div>
+                    <div class="editor-pane">
+                        <h3>Editor de Exercício</h3>
+                        <form id="exercise-form">
+                            <label>Nome</label>
+                            <input type="text" name="name">
+                            <label>YouTube ID</label>
+                            <input type="text" name="videoId">
+                            <label>Séries Alvo</label>
+                            <input type="text" name="series">
+                            <button type="submit" class="glow-btn">SALVAR ALTERAÇÕES</button>
+                        </form>
+                    </div>
+                </main>
+            </div>
+        </div>
+
+        <!-- Exercise Focus Overlay (used during workout) -->
         <div id="exercise-overlay" class="overlay hidden">
             <div class="overlay-glass"></div>
             <div class="overlay-modal">
                 <div class="modal-handle"></div>
                 <button class="close-btn"><i data-lucide="x"></i></button>
-                
-                <div class="video-container">
-                    <div id="youtube-player"></div>
-                </div>
-
+                <div class="video-container" id="modal-video-container"></div>
                 <div class="modal-body">
-                    <h2 id="modal-exercise-name">Supino Inclinado</h2>
-                    <p id="modal-exercise-desc">Foco em peitoral superior e deltoides.</p>
-                    
+                    <h2 id="modal-name">Exercicio</h2>
                     <div class="load-tracker">
-                        <div class="previous-record">
-                            <span class="label">RECORD ANTERIOR</span>
-                            <span class="value" id="prev-load-val">44kg x 12</span>
+                        <div class="prev-info">Último: <span id="modal-prev-load">---</span></div>
+                        <div class="input-grid">
+                            <input type="number" id="w-input" placeholder="Cargo">
+                            <input type="number" id="r-input" placeholder="Reps">
                         </div>
-                        
-                        <div class="input-row">
-                            <div class="input-box">
-                                <label>CARGA (KG)</label>
-                                <input type="number" id="weight-input" placeholder="0">
-                            </div>
-                            <div class="input-box">
-                                <label>REPS</label>
-                                <input type="number" id="reps-input" placeholder="0">
-                            </div>
-                        </div>
-
-                        <button id="confirm-set-btn" class="glow-btn">REGISTRAR SÉRIE</button>
+                        <button id="add-set-btn" class="glow-btn">REGISTRAR SÉRIE</button>
                     </div>
-
-                    <div id="timer-display" class="timer hidden">
-                        <span class="time">01:30</span>
-                        <span class="desc">DESCANSO ATIVO</span>
+                    <div class="set-history" id="modal-set-history">
+                        <!-- Shows completed sets in current session -->
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Scripts -->
     <script src="app.js"></script>
 </body>
 </html>
