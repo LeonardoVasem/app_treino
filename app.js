@@ -1,4 +1,4 @@
-// --- TITAN LOAD CLOUD ARCHITECTURE PRO (RELOADED) ---
+// --- TITAN LOAD CLOUD ARCHITECTURE PRO (RELOADED V2) ---
 
 const firebaseConfig = {
     apiKey: "AIzaSyCdLVzg_Uns3aRNT8jJLc_C8E2yZfV8RF0",
@@ -27,13 +27,13 @@ class TitanApp {
         this.selectedStudent = null;
         this.selectedDay = "SEG";
         this.authUserData = null;
+        this.sessionSets = [];
         
         window.app = this;
         this.init();
     }
 
     async init() {
-        // Monitora Login
         auth.onAuthStateChanged(async (user) => {
             if (user) {
                 this.authUserData = user;
@@ -42,36 +42,28 @@ class TitanApp {
                 this.switchScreen('login-screen');
             }
         });
-
         this.setupListeners();
     }
 
     async handleUserLogin(user) {
-        // 1. Sincroniza Biblioteca
         db.collection("library").onSnapshot(snap => {
             if (snap.empty) this.seedLibrary();
             this.library = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             this.renderLibrary();
         });
 
-        // 2. Busca perfil do Aluno
         const doc = await db.collection("students").doc(user.uid).get();
         if (!doc.exists) {
-            // Cria novo aluno se não existir
             this.currentUser = {
-                id: user.uid,
-                name: user.displayName,
-                email: user.email,
+                id: user.uid, name: user.displayName, email: user.email,
                 schedule: this.emptySchedule(),
                 stats: { totalWorkouts: 0, volume: 0, records: 0 }
             };
             await db.collection("students").doc(user.uid).set(this.currentUser);
         } else {
-            this.currentUser = doc.data();
+            this.currentUser = { id: doc.id, ...doc.data() };
         }
 
-        // 3. Se for VOCÊ (Personal), carrega a lista de todos os alunos
-        // Aqui você pode adicionar seu email futuramente para travar o modo trainer
         db.collection("students").onSnapshot(snap => {
             this.students = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             this.syncUI();
@@ -83,18 +75,9 @@ class TitanApp {
     emptySchedule() {
         const sched = {};
         ["SEG", "TER", "QUA", "QUI", "SEX", "SAB", "DOM"].forEach(day => {
-            sched[day] = { name: "DESCANSO", exercises: [] };
+            sched[day] = { name: "TREINO", exercises: [] };
         });
         return sched;
-    }
-
-    async login() {
-        const provider = new firebase.auth.GoogleAuthProvider();
-        try {
-            await auth.signInWithPopup(provider);
-        } catch (err) {
-            this.toast("Erro ao logar: " + err.message);
-        }
     }
 
     setupListeners() {
@@ -103,9 +86,19 @@ class TitanApp {
         document.getElementById('back-to-app').onclick = () => this.switchScreen('home-screen');
         document.getElementById('save-ins-btn').onclick = () => this.saveInspectorEdit();
         document.getElementById('add-set-btn').onclick = () => this.addSet();
-        document.getElementById('finish-workout').onclick = () => this.finishWorkout();
         document.getElementById('save-lib-btn').onclick = () => this.saveLibUpdate();
+        document.getElementById('finish-workout').onclick = () => this.finishWorkout();
+        document.getElementById('close-summary').onclick = () => this.switchScreen('home-screen');
         
+        // Listener para o Nome do Treino
+        document.getElementById('day-workout-name').oninput = (e) => {
+            if(this.selectedStudent) {
+                this.selectedStudent.schedule[this.selectedDay].name = e.target.value.toUpperCase();
+                this.save();
+                this.updateWeekUI();
+            }
+        };
+
         document.querySelectorAll('.day-btn').forEach(btn => {
             btn.onclick = () => {
                 this.selectedDay = btn.dataset.day;
@@ -122,13 +115,18 @@ class TitanApp {
         });
     }
 
+    async login() {
+        const provider = new firebase.auth.GoogleAuthProvider();
+        await auth.signInWithPopup(provider);
+    }
+
     switchScreen(id) {
         document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
         document.getElementById(id).classList.remove('hidden');
         if (id === 'home-screen' || id === 'trainer-screen') this.syncUI();
     }
 
-    // --- ATHLETE LOGIC ---
+    // --- ATHLETE ---
     renderAthleteHome() {
         if (!this.currentUser) return;
         const s = this.currentUser.stats || { totalWorkouts: 0, volume: 0, records: 0 };
@@ -146,8 +144,7 @@ class TitanApp {
                 <div class="workout-card">
                     <div class="workout-card-body">
                         <span style="font-size:0.7rem; color:var(--primary); font-weight:800; display:block; margin-bottom:5px;">${day}</span>
-                        <h2>${data.name}</h2>
-                        <p>${data.exercises.length} EXERCÍCIOS</p>
+                        <h2>${data.name}</h2><p>${data.exercises.length} EXERCÍCIOS</p>
                         <button class="btn-start" onclick="app.startWorkout('${day}')">INICIAR TREINO</button>
                     </div>
                 </div>
@@ -155,33 +152,66 @@ class TitanApp {
         }).join('');
     }
 
-    // (Outros métodos como startWorkout, finishWorkout, renderLibrary, etc. mantidos e adaptados ao novo UID)
-    // --- TRAINER LOGIC ---
-    // Mesma lógica de antes, mas agora usamos this.selectedStudent.id (que é o UID do Google)
-    
-    // Método de salvamento genérico
-    async save() {
-        if (db && this.selectedStudent) {
-            await db.collection("students").doc(this.selectedStudent.id).set(this.selectedStudent);
-        } else if (db && this.currentUser) {
-            await db.collection("students").doc(this.currentUser.id).set(this.currentUser);
-        }
+    startWorkout(day) {
+        this.activeWorkoutDay = day;
+        this.activeWorkout = this.currentUser.schedule[day];
+        this.sessionSets = [];
+        this.switchScreen('workout-screen');
+        this.renderExerciseFeed();
     }
 
-    // Copiar aqui o restante das funções de renderização do Trainer enviadas anteriormente...
-    renderLibrary() {
-        const libEl = document.getElementById('exercise-library');
-        if (!libEl) return;
-        libEl.innerHTML = this.library.map(ex => `
-            <div class="list-item" data-id="${ex.id}">
-                <span>${ex.name}</span>
-                <i data-lucide="edit-3" size="14" style="margin-left:auto; cursor:pointer;" onclick="app.openLibEditor('${ex.id}')"></i>
-            </div>
-        `).join('');
+    renderExerciseFeed() {
+        const feed = document.getElementById('exercise-feed');
+        feed.innerHTML = this.activeWorkout.exercises.map(ex => {
+            const done = this.sessionSets.filter(s => s.id === ex.guid).length;
+            return `
+                <div class="workout-card" onclick="app.openExerciseModal('${ex.guid}')">
+                    <div class="workout-card-body" style="padding:15px; background:var(--surface-light); display:flex; justify-content:space-between; align-items:center;">
+                        <div>
+                            <h3 style="font-size:1.1rem; color:white;">${ex.name}</h3>
+                            <p style="margin:0; opacity:0.6">${ex.series} | ${done}/${ex.totalSets || 3} Séries</p>
+                        </div>
+                        <i data-lucide="${done >= (ex.totalSets || 3) ? 'check-circle' : 'circle'}" color="${done >= (ex.totalSets || 3) ? '#bfff00' : '#444'}"></i>
+                    </div>
+                </div>
+            `;
+        }).join('');
         lucide.createIcons();
-        this.initSortable();
     }
 
+    openExerciseModal(guid) {
+        this.selectedEx = this.activeWorkout.exercises.find(e => e.guid === guid);
+        const libEx = this.library.find(l => l.name === this.selectedEx.name) || this.selectedEx;
+        document.getElementById('modal-name').textContent = this.selectedEx.name;
+        document.getElementById('modal-prev-load').textContent = (this.selectedEx.weight || 0) + 'kg';
+        document.getElementById('w-input').value = this.selectedEx.weight || "";
+        const vidID = this.extractYoutubeId(libEx.videoId);
+        document.getElementById('modal-video-container').innerHTML = `<iframe src="https://www.youtube.com/embed/${vidID}?autoplay=1&mute=1&playsinline=1" frameborder="0" allowfullscreen></iframe>`;
+        document.getElementById('exercise-overlay').classList.remove('hidden');
+    }
+
+    addSet() {
+        const w = parseFloat(document.getElementById('w-input').value);
+        const r = parseInt(document.getElementById('r-input').value);
+        if(!w || !r) return;
+        this.sessionSets.push({ id: this.selectedEx.guid, w, r });
+        if(w > (this.selectedEx.weight || 0)) {
+            this.selectedEx.weight = w;
+            this.currentUser.stats.records++;
+        }
+        this.renderExerciseFeed();
+    }
+
+    async finishWorkout() {
+        const vol = this.sessionSets.reduce((acc, s) => acc + (s.w * s.r), 0);
+        this.currentUser.stats.volume += vol;
+        this.currentUser.stats.totalWorkouts++;
+        await db.collection("sessions").add({ studentId: this.currentUser.id, date: new Date().toLocaleDateString('pt-BR'), volume: vol, timestamp: firebase.firestore.FieldValue.serverTimestamp() });
+        await this.save();
+        this.switchScreen('summary-screen');
+    }
+
+    // --- TRAINER ---
     selectStudent(id) {
         this.selectedStudent = this.students.find(s => s.id === id);
         document.getElementById('no-student-selected').classList.add('hidden');
@@ -193,36 +223,64 @@ class TitanApp {
         this.renderTrainer();
     }
 
-    async finishWorkout() {
-        const vol = this.sessionSets.reduce((acc, s) => acc + (s.w * s.r), 0);
-        const recs = 1; // Placeholder
-        this.currentUser.stats.volume += vol;
-        this.currentUser.stats.totalWorkouts++;
-        await db.collection("sessions").add({
-            studentId: this.currentUser.id,
-            date: new Date().toLocaleDateString('pt-BR'),
-            volume: vol,
-            records: recs,
-            timestamp: firebase.firestore.FieldValue.serverTimestamp()
-        });
-        await this.save();
-        this.switchScreen('summary-screen');
+    async loadStudentHistory() {
+        try {
+            const snap = await db.collection("sessions").where("studentId", "==", this.selectedStudent.id).orderBy("timestamp", "desc").limit(10).get();
+            const histEl = document.getElementById('student-history-list');
+            histEl.innerHTML = snap.docs.map(doc => {
+                const s = doc.data();
+                return `<div class="history-item"><span class="date">${s.date}</span><span class="vol">${(s.volume/1000).toFixed(1)} TON</span></div>`;
+            }).join('');
+        } catch(e) { console.error("Histórico indisponível (Crie o índice no console do Firebase)"); }
     }
 
-    async seedLibrary() {
-        const lib = [
-            { id: "lib1", name: "Alongamentos", videoId: "9S_pU6q0Z6c", defaultSeries: "2x" },
-            { id: "lib2", name: "Depressão Escapular", videoId: "f0aOqLp49lI", defaultSeries: "2x" }
-        ];
-        for (const ex of lib) await db.collection("library").doc(ex.id).set(ex);
+    renderWorkoutBuilder() {
+        const dropzone = document.getElementById('active-workout-builder');
+        const dayData = this.selectedStudent.schedule[this.selectedDay];
+        document.getElementById('day-workout-name').value = dayData.name || "";
+        
+        dropzone.innerHTML = dayData.exercises.map((ex, idx) => `
+            <div class="list-item" onclick="app.inspectExercise('${ex.guid}')">
+                <span>${idx + 1}. ${ex.name}</span>
+                <i data-lucide="trash-2" size="14" style="margin-left:auto" onclick="event.stopPropagation(); app.removeExercise('${ex.guid}')"></i>
+            </div>
+        `).join('');
+        lucide.createIcons();
+    }
+
+    inspectExercise(guid) {
+        this.activeExEdit = this.selectedStudent.schedule[this.selectedDay].exercises.find(e => e.guid === guid);
+        const libEx = this.library.find(l => l.name === this.activeExEdit.name) || this.activeExEdit;
+        document.getElementById('ins-name').textContent = this.activeExEdit.name;
+        document.getElementById('ins-series').value = this.activeExEdit.series || "3x";
+        const vidID = this.extractYoutubeId(libEx.videoId);
+        document.getElementById('inspector-video').innerHTML = `<iframe src="https://www.youtube.com/embed/${vidID}?autoplay=1&mute=1" width="100%" height="100%" frameborder="0" allowfullscreen></iframe>`;
+    }
+
+    async saveInspectorEdit() {
+        this.activeExEdit.series = document.getElementById('ins-series').value;
+        this.activeExEdit.totalSets = parseInt(this.activeExEdit.series) || 3;
+        await this.save();
+        this.toast("Treino Atualizado!");
+    }
+
+    renderLibrary() {
+        const libEl = document.getElementById('exercise-library');
+        if (!libEl) return;
+        libEl.innerHTML = this.library.map(ex => `
+            <div class="list-item" data-id="${ex.id}">
+                <span>${ex.name}</span>
+                <i data-lucide="edit-3" size="14" style="margin-left:auto" onclick="app.openLibEditor('${ex.id}')"></i>
+            </div>
+        `).join('');
+        lucide.createIcons();
+        this.initSortable();
     }
 
     openLibEditor(id) {
         this.activeLibEdit = this.library.find(ex => ex.id === id);
         document.getElementById('lib-edit-name').textContent = `Editar: ${this.activeLibEdit.name}`;
         document.getElementById('lib-edit-url').value = this.activeLibEdit.videoId;
-        const vidID = this.extractYoutubeId(this.activeLibEdit.videoId);
-        document.getElementById('lib-edit-video').innerHTML = `<iframe src="https://www.youtube.com/embed/${vidID}?mute=1" width="100%" height="100%" frameborder="0" allowfullscreen></iframe>`;
         document.getElementById('lib-editor-overlay').classList.remove('hidden');
     }
 
@@ -230,7 +288,7 @@ class TitanApp {
         const vid = this.extractYoutubeId(document.getElementById('lib-edit-url').value);
         await db.collection("library").doc(this.activeLibEdit.id).update({ videoId: vid });
         document.getElementById('lib-editor-overlay').classList.add('hidden');
-        this.toast("Biblioteca Global Atualizada! 🌍");
+        this.toast("Biblioteca Global Atualizada!");
     }
 
     syncUI() {
@@ -242,22 +300,8 @@ class TitanApp {
     renderTrainer() {
         const slist = document.getElementById('student-list');
         slist.innerHTML = this.students.map(s => `
-            <div class="list-item ${this.selectedStudent?.id === s.id ? 'active' : ''}" onclick="app.selectStudent('${s.id}')">
-                <span>${s.name}</span>
-            </div>
+            <div class="list-item ${this.selectedStudent?.id === s.id ? 'active' : ''}" onclick="app.selectStudent('${s.id}')"><span>${s.name}</span></div>
         `).join('');
-    }
-
-    renderWorkoutBuilder() {
-        const dropzone = document.getElementById('active-workout-builder');
-        const exercises = this.selectedStudent.schedule[this.selectedDay].exercises;
-        dropzone.innerHTML = exercises.map((ex, idx) => `
-            <div class="list-item" onclick="app.inspectExercise('${ex.guid}')">
-                <span>${idx + 1}. ${ex.name}</span>
-                <i data-lucide="trash-2" size="14" style="margin-left:auto; cursor:pointer;" onclick="event.stopPropagation(); app.removeExercise('${ex.guid}')"></i>
-            </div>
-        `).join('');
-        lucide.createIcons();
     }
 
     updateWeekUI() {
@@ -265,8 +309,14 @@ class TitanApp {
             const day = btn.dataset.day;
             btn.classList.toggle('active', day === this.selectedDay);
             const sched = this.selectedStudent.schedule[day];
-            btn.querySelector('.day-status').textContent = (sched?.exercises?.length > 0) ? 'TREINO' : 'DESC';
+            btn.querySelector('.day-status').textContent = sched?.exercises.length > 0 ? (sched.name || 'TREINO') : 'DESC';
         });
+    }
+
+    removeExercise(guid) {
+        this.selectedStudent.schedule[this.selectedDay].exercises = this.selectedStudent.schedule[this.selectedDay].exercises.filter(e => e.guid !== guid);
+        this.save();
+        this.renderWorkoutBuilder();
     }
 
     initSortable() {
@@ -293,10 +343,14 @@ class TitanApp {
         this.renderWorkoutBuilder();
     }
 
-    removeExercise(guid) {
-        this.selectedStudent.schedule[this.selectedDay].exercises = this.selectedStudent.schedule[this.selectedDay].exercises.filter(e => e.guid !== guid);
-        this.save();
-        this.renderWorkoutBuilder();
+    async save() {
+        const ref = this.selectedStudent ? this.selectedStudent.id : this.currentUser.id;
+        await db.collection("students").doc(ref).set(this.selectedStudent || this.currentUser);
+    }
+
+    async seedLibrary() {
+        const lib = [{ id: "l1", name: "Supino", videoId: "...", defaultSeries: "3x" }];
+        for (const ex of lib) await db.collection("library").doc(ex.id).set(ex);
     }
 
     extractYoutubeId(url) {
@@ -309,7 +363,7 @@ class TitanApp {
 
     toast(msg) {
         const t = document.createElement('div');
-        t.style.cssText = `position:fixed; bottom:50px; left:50%; transform:translateX(-50%); background:var(--primary); color:#000; padding:12px 24px; border-radius:30px; font-weight:800; z-index:4000; border:2px solid black;`;
+        t.style.cssText = `position:fixed; bottom:50px; left:50%; transform:translateX(-50%); background:var(--primary); color:#000; padding:12px 24px; border-radius:30px; font-weight:800; z-index:4000;`;
         t.textContent = msg;
         document.body.appendChild(t);
         setTimeout(() => t.remove(), 2500);
@@ -317,3 +371,4 @@ class TitanApp {
 }
 
 const app = new TitanApp();
+window.app = app;
