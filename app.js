@@ -47,8 +47,10 @@ class TitanApp {
     }
 
     async onLogin(user) {
-        const isTrainer = user.email === TRAINER_EMAIL;
+        const loggedEmail = user.email.toLowerCase();
+        const isTrainer = loggedEmail === TRAINER_EMAIL.toLowerCase();
         
+        console.log("TITAN AUTH — Logged as:", loggedEmail, " | isTrainer:", isTrainer);
         const ref = db.collection("students").doc(user.uid);
         const snap = await ref.get();
         if (!snap.exists) {
