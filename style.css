@@ -44,6 +44,19 @@ body { background: var(--bg); color: var(--text); height: 100vh; width: 100vw; o
 .student-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 40px; border-bottom: 1px solid #222; padding-bottom: 20px; }
 .student-header h2 { font-family: 'Bebas Neue'; font-size: 2.5rem; line-height: 1; }
 
+/* Weekly Planner */
+.weekly-planner { margin-bottom: 30px; }
+.planner-days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; }
+.day-btn { 
+    background: var(--surface); border: 1px solid #222; border-radius: 12px; 
+    padding: 12px 5px; cursor: pointer; transition: 0.2s; text-align: center;
+}
+.day-btn:hover { border-color: var(--primary-dim); }
+.day-btn.active { border-color: var(--primary); background: var(--primary-dim); }
+.day-btn b { display: block; font-size: 0.8rem; margin-bottom: 4px; }
+.day-btn .day-status { font-size: 0.55rem; color: var(--text-dim); text-transform: uppercase; font-weight: 800; }
+.day-btn.active .day-status { color: var(--primary); }
+
 .builder-container { display: grid; grid-template-columns: 1fr 400px; gap: 40px; }
 .col-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
 .col-header h3 { font-family: 'Bebas Neue'; font-size: 1.2rem; }
