@@ -21,6 +21,7 @@ if (firebase.apps.length === 0) {
 
 class TitanApp {
     constructor() {
+        console.log("TITAN LOAD LUX v1.0.5 - DEPLOYED 19:10");
         this.students = [];
         this.library = [];
         this.currentUser = null;
