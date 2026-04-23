@@ -1,0 +1,17 @@
+{
+  "name": "TITAN LOAD",
+  "short_name": "TITAN",
+  "start_url": "index.html",
+  "display": "standalone",
+  "background_color": "#0a0a0a",
+  "theme_color": "#bfff00",
+  "description": "Elite Training & Load Progression App",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/2964/2964514.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
