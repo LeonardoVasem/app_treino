@@ -10,13 +10,9 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
     
-    <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
-    
-    <!-- Drag and Drop Library -->
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
-    
     <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 <body class="athlete-mode">
@@ -39,17 +35,17 @@
 
             <div class="stats-row">
                 <div class="mini-card"><span class="val" id="total-workouts">0</span><span class="lab">Treinos</span></div>
-                <div class="mini-card highlight"><span class="val" id="total-volume">0k</span><span class="lab">Vol. Total</span></div>
+                <div class="mini-card highlight"><span class="val" id="total-volume">0.0k</span><span class="lab">Vol. Total</span></div>
                 <div class="mini-card"><span class="val" id="total-records">0</span><span class="lab">Recordes</span></div>
             </div>
 
             <section class="workout-selection">
-                <h3>MEUS TREINOS</h3>
+                <h3 class="section-title">MEUS TREINOS</h3>
                 <div id="workout-cards-container"></div>
             </section>
         </div>
 
-        <!-- Central do Trainer (Desktop Focused) -->
+        <!-- Central do Trainer -->
         <div id="trainer-screen" class="screen hidden">
             <header class="trainer-header">
                 <div class="logo">TITAN<span>TRAINER</span></div>
@@ -64,9 +60,8 @@
                     </div>
                     <div class="sidebar-section" style="margin-top: 30px;">
                         <h3><i data-lucide="dumbbell"></i> BIBLIOTECA</h3>
-                        <div id="exercise-library" class="list-container library-pool">
-                            <!-- Exercicios globais para arrastar -->
-                        </div>
+                        <p style="font-size:0.6rem; color:var(--text-dim); margin-bottom:10px;">Clique no ícone para editar o vídeo global</p>
+                        <div id="exercise-library" class="list-container library-pool"></div>
                     </div>
                 </aside>
 
@@ -74,7 +69,7 @@
                     <div id="student-dashboard" class="hidden">
                         <div class="student-header">
                             <div>
-                                <h2 id="selected-student-name">Selecione Aluno</h2>
+                                <h2 id="selected-student-name">...</h2>
                                 <p id="selected-student-id" style="font-size:0.7rem; color:var(--text-dim)"></p>
                             </div>
                             <div class="student-stats">
@@ -83,7 +78,6 @@
                             </div>
                         </div>
 
-                        <!-- Cronograma Semanal -->
                         <div class="weekly-planner">
                             <div class="planner-days" id="week-selector">
                                 <button class="day-btn" data-day="SEG"><b>SEG</b><span class="day-status">---</span></button>
@@ -104,12 +98,9 @@
                                 </div>
                                 <div id="active-workout-builder" class="builder-dropzone"></div>
 
-                                <!-- Histórico de Progressão -->
                                 <div class="progression-history" style="margin-top:40px;">
                                     <h3 style="font-family:'Bebas Neue'; color:var(--primary); margin-bottom:15px;">HISTÓRICO DE EVOLUÇÃO</h3>
-                                    <div id="student-history-list" class="history-grid">
-                                        <!-- Entradas de progresso aqui -->
-                                    </div>
+                                    <div id="student-history-list" class="history-grid"></div>
                                 </div>
                             </div>
                             
@@ -117,10 +108,8 @@
                                 <div id="inspector-content">
                                     <div class="video-box" id="inspector-video"></div>
                                     <div class="editor-pane">
-                                        <h3 id="ins-name">Editor</h3>
+                                        <h3 id="ins-name">Configurar Séries</h3>
                                         <div id="ins-form">
-                                            <label>YouTube Link</label>
-                                            <input type="text" id="ins-video-id">
                                             <div class="grid-2">
                                                 <div><label>Séries</label><input type="text" id="ins-series"></div>
                                                 <div><label>Meta Reps</label><input type="text" id="ins-reps"></div>
@@ -140,20 +129,33 @@
             </div>
         </div>
 
-        <!-- Tela de Treino Ativo -->
+        <!-- Modal de Edição de Biblioteca (Global) -->
+        <div id="lib-editor-overlay" class="overlay hidden">
+            <div class="overlay-glass"></div>
+            <div class="overlay-modal small">
+                <header class="modal-header">
+                    <h2 id="lib-edit-name">Editar Exercício</h2>
+                    <button onclick="document.getElementById('lib-editor-overlay').classList.add('hidden')" class="close-btn"><i data-lucide="x"></i></button>
+                </header>
+                <div class="modal-body">
+                    <div class="video-box" id="lib-edit-video"></div>
+                    <label>LINK DO YOUTUBE (Global)</label>
+                    <input type="text" id="lib-edit-url" class="full-input" placeholder="Cole o link aqui">
+                    <button id="save-lib-btn" class="glow-btn" style="margin-top:20px;">ATUALIZAR VÍDEO PARA TODOS</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tela de Treino Ativo e Overlay de Exercício mantidos... -->
         <div id="workout-screen" class="screen hidden">
             <header class="active-header">
                 <button id="cancel-workout" class="text-btn">SAIR</button>
                 <div class="timer-main" id="workout-duration">00:00</div>
                 <button id="finish-workout" class="primary-btn sm">FINALIZAR</button>
             </header>
-            <div class="progress-bar-container">
-                <div class="progress-fill" id="overall-progress"></div>
-            </div>
             <div id="exercise-feed" class="exercise-feed"></div>
         </div>
 
-        <!-- Overlay de Exercício (Full Screen no Mobile) -->
         <div id="exercise-overlay" class="overlay hidden">
             <div class="overlay-glass"></div>
             <div class="overlay-modal">
@@ -161,21 +163,13 @@
                     <button class="close-btn"><i data-lucide="chevron-down"></i></button>
                     <h2 id="modal-name">Nome</h2>
                 </header>
-                
                 <div class="video-container" id="modal-video-container"></div>
-                
                 <div class="modal-body-scroll">
                     <div class="load-tracker">
                         <div class="prev-info">RECORDE: <span id="modal-prev-load">---</span></div>
                         <div class="input-grid">
-                            <div class="field">
-                                <label>CARGA (KG)</label>
-                                <input type="number" id="w-input" placeholder="0">
-                            </div>
-                            <div class="field">
-                                <label>REPS</label>
-                                <input type="number" id="r-input" placeholder="0">
-                            </div>
+                            <div class="field"><label>CARGA (KG)</label><input type="number" id="w-input" placeholder="0"></div>
+                            <div class="field"><label>REPS</label><input type="number" id="r-input" placeholder="0"></div>
                         </div>
                         <button id="add-set-btn" class="glow-btn">REGISTRAR SÉRIE</button>
                     </div>
@@ -184,14 +178,12 @@
             </div>
         </div>
 
-        <!-- Resumo -->
         <div id="summary-screen" class="screen hidden">
             <div class="summary-content">
                 <i data-lucide="award" class="award-icon"></i>
                 <h1>TREINO FINALIZADO!</h1>
                 <div class="summary-stats">
                     <div class="s-stat"><span id="sum-volume">--</span><p>VOLUME</p></div>
-                    <div class="s-stat"><span id="sum-duration">--</span><p>TEMPO</p></div>
                 </div>
                 <button id="close-summary" class="glow-btn">CONTINUAR</button>
             </div>

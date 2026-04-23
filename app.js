@@ -20,26 +20,22 @@ class TitanApp {
     constructor() {
         this.students = [];
         this.library = [];
-        this.history = [];
         this.currentUser = null;
         this.selectedStudent = null;
         this.selectedDay = "SEG";
         this.activeExEdit = null;
-        this.editMode = 'student'; // 'student' ou 'library'
         
         this.init();
     }
 
     async init() {
         if (db) {
-            // Sincroniza Alunos
             db.collection("students").onSnapshot(async (snap) => {
-                if (snap.empty) await this.seedInitialData();
+                if (snap.empty) await this.seedInitialStudent();
                 this.students = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 this.syncUI();
-            });
+            }, (err) => this.handleDbError(err));
 
-            // Sincroniza Biblioteca Global
             db.collection("library").onSnapshot(snap => {
                 if (snap.empty) this.seedLibrary();
                 this.library = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -49,7 +45,14 @@ class TitanApp {
         this.setupListeners();
     }
 
-    async seedInitialData() {
+    handleDbError(err) {
+        if (err.code === 'not-found') {
+            this.toast("ERRO: Ative o 'Firestore Database' no console do Firebase!");
+        }
+        console.error(err);
+    }
+
+    async seedInitialStudent() {
         const initial = {
             id: "LEO1", name: "Leonardo Vasem",
             schedule: {
@@ -65,9 +68,9 @@ class TitanApp {
 
     async seedLibrary() {
         const lib = [
-            { id: "lib1", name: "ALONGAMENTOS", videoId: "9S_pU6q0Z6c", defaultSeries: "2x 30S" },
-            { id: "lib2", name: "DEPRESSÃO ESCAPULAR", videoId: "f0aOqLp49lI", defaultSeries: "2x" },
-            { id: "lib3", name: "SUPINO INCLINADO MÁQUINA", videoId: "SrqOu55lr6A", defaultSeries: "4x" }
+            { id: "lib1", name: "Alongamentos", videoId: "9S_pU6q0Z6c", defaultSeries: "2x" },
+            { id: "lib2", name: "Depressão Escapular", videoId: "f0aOqLp49lI", defaultSeries: "2x" },
+            { id: "lib3", name: "Supino Máquina", videoId: "SrqOu55lr6A", defaultSeries: "4x" }
         ];
         for (const ex of lib) await db.collection("library").doc(ex.id).set(ex);
     }
@@ -86,8 +89,9 @@ class TitanApp {
         const libEl = document.getElementById('exercise-library');
         if (!libEl) return;
         libEl.innerHTML = this.library.map(ex => `
-            <div class="list-item" data-id="${ex.id}" onclick="app.inspectLibraryItem('${ex.id}')">
-                <span>${ex.name}</span> <i data-lucide="edit-2" size="12"></i>
+            <div class="list-item" data-id="${ex.id}">
+                <span>${ex.name}</span>
+                <i data-lucide="edit-3" size="14" style="margin-left:auto; cursor:pointer;" onclick="app.openLibEditor('${ex.id}')"></i>
             </div>
         `).join('');
         lucide.createIcons();
@@ -101,16 +105,20 @@ class TitanApp {
         document.getElementById('add-set-btn').onclick = () => this.addSet();
         document.getElementById('finish-workout').onclick = () => this.finishWorkout();
         document.getElementById('close-summary').onclick = () => this.switchScreen('home-screen');
-        document.querySelector('.close-btn').onclick = () => {
-            document.getElementById('exercise-overlay').classList.add('hidden');
-            document.getElementById('modal-video-container').innerHTML = '';
-        };
-
+        document.getElementById('save-lib-btn').onclick = () => this.saveLibUpdate();
+        
         document.querySelectorAll('.day-btn').forEach(btn => {
             btn.onclick = () => {
                 this.selectedDay = btn.dataset.day;
                 this.updateWeekUI();
                 this.renderWorkoutBuilder();
+            };
+        });
+
+        document.querySelectorAll('.close-btn').forEach(b => {
+            b.onclick = () => {
+                document.querySelectorAll('.overlay').forEach(o => o.classList.add('hidden'));
+                document.querySelectorAll('iframe').forEach(i => i.src = ""); // Para o som
             };
         });
     }
@@ -126,7 +134,7 @@ class TitanApp {
         const s = this.currentUser.stats || { totalWorkouts: 0, volume: 0, records: 0 };
         document.getElementById('user-name').textContent = `Bem-vindo, ${this.currentUser.name.split(' ')[0]}`;
         document.getElementById('total-workouts').textContent = s.totalWorkouts;
-        document.getElementById('total-volume').textContent = (s.volume/1000).toFixed(1) + 'k';
+        document.getElementById('total-volume').textContent = (parseFloat(s.volume)/1000).toFixed(1) + 'k';
         document.getElementById('total-records').textContent = s.records;
 
         const container = document.getElementById('workout-cards-container');
@@ -135,11 +143,14 @@ class TitanApp {
             const data = this.currentUser.schedule[day];
             if(!data || data.exercises.length === 0) return "";
             return `
-                <div class="workout-card"><div class="workout-card-body">
-                    <span style="font-size:0.7rem; color:var(--primary); font-weight:800">${day}</span>
-                    <h2>${data.name}</h2><p>${data.exercises.length} EXERCÍCIOS</p>
-                    <button class="btn-start" onclick="app.startWorkout('${day}')">INICIAR TREINO</button>
-                </div></div>
+                <div class="workout-card">
+                    <div class="workout-card-body">
+                        <span style="font-size:0.7rem; color:var(--primary); font-weight:800; display:block; margin-bottom:5px;">${day}</span>
+                        <h2>${data.name}</h2>
+                        <p>${data.exercises.length} EXERCÍCIOS</p>
+                        <button class="btn-start" onclick="app.startWorkout('${day}')">INICIAR TREINO</button>
+                    </div>
+                </div>
             `;
         }).join('');
     }
@@ -156,11 +167,13 @@ class TitanApp {
         const feed = document.getElementById('exercise-feed');
         feed.innerHTML = this.activeWorkout.exercises.map(ex => {
             const done = this.sessionSets.filter(s => s.id === ex.guid).length;
-            const libInfo = this.library.find(l => l.name === ex.name) || ex;
             return `
                 <div class="workout-card" onclick="app.openExerciseModal('${ex.guid}')">
                     <div class="workout-card-body" style="padding:15px; background:var(--surface-light); display:flex; justify-content:space-between; align-items:center;">
-                        <div><h3>${ex.name}</h3><p style="margin:0">${ex.series} | ${done}/${ex.totalSets || 3} Séries</p></div>
+                        <div>
+                            <h3 style="font-size:1.1rem; color:white;">${ex.name}</h3>
+                            <p style="margin:0; opacity:0.6">${ex.series} | ${done}/${ex.totalSets || 3} Séries</p>
+                        </div>
                         <i data-lucide="${done >= (ex.totalSets || 3) ? 'check-circle' : 'circle'}" color="${done >= (ex.totalSets || 3) ? '#bfff00' : '#444'}"></i>
                     </div>
                 </div>
@@ -177,44 +190,8 @@ class TitanApp {
         document.getElementById('w-input').value = this.selectedEx.weight || "";
         
         const vidID = this.extractYoutubeId(libEx.videoId);
-        document.getElementById('modal-video-container').innerHTML = `<iframe src="https://www.youtube.com/embed/${vidID}?autoplay=1&mute=1&playsinline=1" frameborder="0"></iframe>`;
+        document.getElementById('modal-video-container').innerHTML = `<iframe src="https://www.youtube.com/embed/${vidID}?autoplay=1&mute=1&playsinline=1" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>`;
         document.getElementById('exercise-overlay').classList.remove('hidden');
-    }
-
-    addSet() {
-        const w = parseFloat(document.getElementById('w-input').value);
-        const r = parseInt(document.getElementById('r-input').value);
-        if(!w || !r) return;
-        this.sessionSets.push({ id: this.selectedEx.guid, w, r });
-        if(w > (this.selectedEx.weight || 0)) {
-            this.selectedEx.weight = w;
-            this.currentUser.stats.records++;
-        }
-        this.renderExerciseFeed();
-    }
-
-    async finishWorkout() {
-        const vol = this.sessionSets.reduce((acc, s) => acc + (s.w * s.r), 0);
-        const recs = this.sessionSets.filter(s => {
-            const ex = this.activeWorkout.exercises.find(e => e.guid === s.id);
-            return s.w >= (ex.weight || 0);
-        }).length;
-
-        this.currentUser.stats.volume += vol;
-        this.currentUser.stats.totalWorkouts++;
-        
-        // Salva Sessão no Histórico
-        await db.collection("sessions").add({
-            studentId: this.currentUser.id,
-            date: new Date().toLocaleDateString('pt-BR'),
-            volume: vol,
-            records: recs,
-            timestamp: firebase.firestore.FieldValue.serverTimestamp()
-        });
-
-        await this.save();
-        document.getElementById('sum-volume').textContent = (vol/1000).toFixed(1) + 't';
-        this.switchScreen('summary-screen');
     }
 
     // --- TRAINER ---
@@ -229,62 +206,39 @@ class TitanApp {
         this.renderTrainer();
     }
 
-    async loadStudentHistory() {
-        const snap = await db.collection("sessions")
-            .where("studentId", "==", this.selectedStudent.id)
-            .orderBy("timestamp", "desc")
-            .limit(10)
-            .get();
-        
-        const histEl = document.getElementById('student-history-list');
-        histEl.innerHTML = snap.docs.map(doc => {
-            const s = doc.data();
-            return `<div class="history-item">
-                <span class="date">${s.date}</span>
-                <span class="vol">${(s.volume/1000).toFixed(1)} TON</span>
-                <span class="recs">${s.records} RECORDES</span>
-            </div>`;
-        }).join('');
+    openLibEditor(id) {
+        this.activeLibEdit = this.library.find(ex => ex.id === id);
+        document.getElementById('lib-edit-name').textContent = `Editar: ${this.activeLibEdit.name}`;
+        document.getElementById('lib-edit-url').value = this.activeLibEdit.videoId;
+        const vidID = this.extractYoutubeId(this.activeLibEdit.videoId);
+        document.getElementById('lib-edit-video').innerHTML = `<iframe src="https://www.youtube.com/embed/${vidID}?mute=1" width="100%" height="100%" frameborder="0" allowfullscreen></iframe>`;
+        document.getElementById('lib-editor-overlay').classList.remove('hidden');
     }
 
-    inspectLibraryItem(id) {
-        this.editMode = 'library';
-        this.activeExEdit = this.library.find(ex => ex.id === id);
-        this.populateInspector();
+    async saveLibUpdate() {
+        const vid = this.extractYoutubeId(document.getElementById('lib-edit-url').value);
+        await db.collection("library").doc(this.activeLibEdit.id).update({ videoId: vid });
+        document.getElementById('lib-editor-overlay').classList.add('hidden');
+        this.toast("Biblioteca Global Atualizada! 🌍");
     }
 
     inspectExercise(guid) {
-        this.editMode = 'student';
         this.activeExEdit = this.selectedStudent.schedule[this.selectedDay].exercises.find(e => e.guid === guid);
-        this.populateInspector();
-    }
-
-    populateInspector() {
-        const ex = this.activeExEdit;
-        const libEx = this.library.find(l => l.name === ex.name) || ex;
-        document.getElementById('ins-name').textContent = ex.name + (this.editMode === 'library' ? ' (GLOBAL)' : '');
-        document.getElementById('ins-video-id').value = libEx.videoId;
-        document.getElementById('ins-series').value = ex.series || ex.defaultSeries;
+        const libEx = this.library.find(l => l.name === this.activeExEdit.name) || this.activeExEdit;
+        document.getElementById('ins-name').textContent = this.activeExEdit.name;
+        document.getElementById('ins-series').value = this.activeExEdit.series || "3x";
         document.getElementById('ins-reps').value = "8-12";
         
         const vidID = this.extractYoutubeId(libEx.videoId);
-        document.getElementById('inspector-video').innerHTML = `<iframe src="https://www.youtube.com/embed/${vidID}?autoplay=1&mute=1" frameborder="0"></iframe>`;
+        document.getElementById('inspector-video').innerHTML = `<iframe src="https://www.youtube.com/embed/${vidID}?autoplay=1&mute=1" width="100%" height="100%" frameborder="0" allowfullscreen></iframe>`;
     }
 
     async saveInspectorEdit() {
         if(!this.activeExEdit) return;
-        const vid = this.extractYoutubeId(document.getElementById('ins-video-id').value);
-        
-        if (this.editMode === 'library') {
-            await db.collection("library").doc(this.activeExEdit.id).update({ videoId: vid });
-            this.toast("Biblioteca Global Atualizada!");
-        } else {
-            this.activeExEdit.series = document.getElementById('ins-series').value;
-            this.activeExEdit.totalSets = parseInt(this.activeExEdit.series) || 3;
-            // O vídeo não salva no aluno, ele puxa da biblioteca agora!
-            await this.save();
-            this.toast("Treino do Aluno Salvo!");
-        }
+        this.activeExEdit.series = document.getElementById('ins-series').value;
+        this.activeExEdit.totalSets = parseInt(this.activeExEdit.series) || 3;
+        await this.save();
+        this.toast("Treino Atualizado! ✅");
         this.renderWorkoutBuilder();
     }
 
@@ -295,6 +249,14 @@ class TitanApp {
                 <span>${s.name}</span>
             </div>
         `).join('');
+    }
+
+    async loadStudentHistory() {
+        const snap = await db.collection("sessions").where("studentId", "==", this.selectedStudent.id).orderBy("timestamp", "desc").limit(10).get();
+        document.getElementById('student-history-list').innerHTML = snap.docs.map(doc => {
+            const s = doc.data();
+            return `<div class="history-item"><span class="date">${s.date}</span><span class="vol">${(s.volume/1000).toFixed(1)} TON</span><span class="recs">${s.records} REC</span></div>`;
+        }).join('');
     }
 
     updateWeekUI() {
@@ -312,7 +274,7 @@ class TitanApp {
         dropzone.innerHTML = exercises.map((ex, idx) => `
             <div class="list-item" onclick="app.inspectExercise('${ex.guid}')">
                 <span>${idx + 1}. ${ex.name}</span>
-                <i data-lucide="trash-2" size="14" style="margin-left:auto" onclick="event.stopPropagation(); app.removeExercise('${ex.guid}')"></i>
+                <i data-lucide="trash-2" size="14" style="margin-left:auto; cursor:pointer;" onclick="event.stopPropagation(); app.removeExercise('${ex.guid}')"></i>
             </div>
         `).join('');
         lucide.createIcons();
@@ -336,7 +298,7 @@ class TitanApp {
     }
 
     addExercise(libEx, idx) {
-        const newEx = { guid: 'g'+Date.now(), name: libEx.name, series: libEx.defaultSeries, weight: 0 };
+        const newEx = { guid: 'g'+Date.now(), name: libEx.name, series: libEx.defaultSeries || "3x", weight: 0 };
         this.selectedStudent.schedule[this.selectedDay].exercises.splice(idx, 0, newEx);
         this.save();
         this.renderWorkoutBuilder();
@@ -357,14 +319,24 @@ class TitanApp {
     }
 
     async save() {
-        if (db && this.selectedStudent) {
-            await db.collection("students").doc(this.selectedStudent.id).set(this.selectedStudent);
+        if (db && this.selectedStudent) await db.collection("students").doc(this.selectedStudent.id).set(this.selectedStudent);
+    }
+
+    async addSet() {
+        const w = parseFloat(document.getElementById('w-input').value);
+        const r = parseInt(document.getElementById('r-input').value);
+        if(!w || !r) return;
+        this.sessionSets.push({ id: this.selectedEx.guid, w, r });
+        if(w > (this.selectedEx.weight || 0)) {
+            this.selectedEx.weight = w;
+            this.currentUser.stats.records++;
         }
+        this.renderExerciseFeed();
     }
 
     toast(msg) {
         const t = document.createElement('div');
-        t.style.cssText = `position:fixed; bottom:50px; left:50%; transform:translateX(-50%); background:var(--primary); color:#000; padding:12px 24px; border-radius:30px; font-weight:800; z-index:3000;`;
+        t.style.cssText = `position:fixed; bottom:50px; left:50%; transform:translateX(-50%); background:var(--primary); color:#000; padding:12px 24px; border-radius:30px; font-weight:800; z-index:4000; border:2px solid black;`;
         t.textContent = msg;
         document.body.appendChild(t);
         setTimeout(() => t.remove(), 2500);
